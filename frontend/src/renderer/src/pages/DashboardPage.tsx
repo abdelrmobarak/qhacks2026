@@ -10,6 +10,7 @@ import ActivityHeatmap from '../components/ActivityHeatmap'
 import EntityList from '../components/EntityList'
 import StoryModal from '../components/StoryModal'
 import LoadingScreen from '../components/LoadingScreen'
+import AgentBar from '../components/AgentBar'
 
 export default function DashboardPage(): React.JSX.Element {
   const navigate = useNavigate()
@@ -97,7 +98,7 @@ export default function DashboardPage(): React.JSX.Element {
     <div className="min-h-screen bg-bg grain">
       <Header email={user?.email} onLogout={handleLogout} />
 
-      <main className="max-w-5xl mx-auto px-6 pb-20">
+      <main className="max-w-5xl mx-auto px-6 pb-32">
         {/* Hero */}
         <section className="py-16 text-center">
           <p className="font-mono text-sm text-fg-subtle mb-4">
@@ -114,6 +115,31 @@ export default function DashboardPage(): React.JSX.Element {
           <StatCard value={`${metrics.total_meeting_hours.toFixed(0)}h`} label="in meetings" />
           <StatCard value={`${metrics.focus_hours_per_week.toFixed(0)}h`} label="focus / week" />
           <StatCard value={metrics.total_emails.toLocaleString()} label="emails" />
+        </section>
+
+        {/* SaturdAI Quick Actions */}
+        <section className="grid grid-cols-3 gap-4 mb-8">
+          <button
+            onClick={() => navigate('/emails')}
+            className="bg-surface border border-border p-4 text-left hover:border-fg-muted/50 transition-colors cursor-pointer"
+          >
+            <p className="font-mono text-xs text-fg-subtle uppercase tracking-wider mb-1">Inbox</p>
+            <p className="text-sm text-fg">Smart email triage</p>
+          </button>
+          <button
+            onClick={() => navigate('/tldr')}
+            className="bg-surface border border-border p-4 text-left hover:border-fg-muted/50 transition-colors cursor-pointer"
+          >
+            <p className="font-mono text-xs text-fg-subtle uppercase tracking-wider mb-1">TLDR</p>
+            <p className="text-sm text-fg">Email digest</p>
+          </button>
+          <button
+            onClick={() => navigate('/subscriptions')}
+            className="bg-surface border border-border p-4 text-left hover:border-fg-muted/50 transition-colors cursor-pointer"
+          >
+            <p className="font-mono text-xs text-fg-subtle uppercase tracking-wider mb-1">Bills</p>
+            <p className="text-sm text-fg">Track subscriptions</p>
+          </button>
         </section>
 
         {/* Cost Banner */}
@@ -153,6 +179,8 @@ export default function DashboardPage(): React.JSX.Element {
           onClose={() => setSelectedEntity(null)}
         />
       )}
+
+      <AgentBar />
     </div>
   )
 }

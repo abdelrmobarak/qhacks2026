@@ -158,6 +158,14 @@ async def google_callback(
         db.add(user)
         await db.flush()
 
+    # Store persistent tokens on user for ongoing API access
+    user.refresh_token_encrypted = (
+        encrypt_token(tokens.refresh_token) if tokens.refresh_token else user.refresh_token_encrypted
+    )
+    user.access_token_encrypted = encrypt_token(tokens.access_token)
+    user.token_expiry = datetime.now(timezone.utc) + timedelta(seconds=tokens.expires_in)
+    await db.flush()
+
     # Check for existing active snapshot
     result = await db.execute(
         select(Snapshot)

@@ -64,6 +64,9 @@ class Settings:
     openai_api_key: str
     openrouter_api_key: str
 
+    # Gradium (STT)
+    gradium_api_key: str
+
     story_verification_enabled: bool
 
 
@@ -173,7 +176,11 @@ def load_settings() -> Settings:
         google_oauth_scopes=_split_csv(
             os.getenv(
                 "GOOGLE_OAUTH_SCOPES",
-                "openid,email,profile,https://www.googleapis.com/auth/gmail.readonly,https://www.googleapis.com/auth/calendar.readonly",
+                "openid,email,profile,"
+                "https://www.googleapis.com/auth/gmail.readonly,"
+                "https://www.googleapis.com/auth/gmail.send,"
+                "https://www.googleapis.com/auth/calendar.readonly,"
+                "https://www.googleapis.com/auth/calendar.events",
             )
         ),
         # LLM
@@ -182,6 +189,7 @@ def load_settings() -> Settings:
         llm_reasoning_effort=os.getenv("LLM_REASONING_EFFORT", "medium"),
         openai_api_key=os.getenv("OPENAI_API_KEY", ""),
         openrouter_api_key=os.getenv("OPENROUTER_API_KEY", ""),
+        gradium_api_key=os.getenv("GRADIUM_API_KEY", ""),
         story_verification_enabled=_get_bool("STORY_VERIFICATION_ENABLED", True),
 
         # Stripe

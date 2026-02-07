@@ -1441,14 +1441,10 @@ async def run_ingestion(snapshot_id: str) -> IngestResult:
             # Stage H: Finalize
             await update_snapshot_status(session, snapshot_uuid, stage=SnapshotStage.finalize)
 
-            # Delete tokens
+            # Delete tokens from snapshot (persistent tokens remain on User)
             snapshot.access_token_encrypted = None
             snapshot.refresh_token_encrypted = None
             snapshot.token_expiry = None
-
-            # Attempt to revoke token
-            if access_token:
-                await revoke_token(access_token)
 
             # Set completion
             snapshot.status = SnapshotStatus.done

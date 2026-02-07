@@ -186,6 +186,32 @@ async def list_events(
     return await asyncio.to_thread(run_list)
 
 
+async def create_event(
+    access_token: str,
+    summary: str,
+    start: datetime,
+    end: datetime,
+    description: str | None = None,
+    location: str | None = None,
+) -> dict:
+    """Create a calendar event. Returns the created event metadata."""
+    service = build_calendar_service(access_token)
+    event_body: dict[str, Any] = {
+        "summary": summary,
+        "start": {"dateTime": start.isoformat(), "timeZone": "UTC"},
+        "end": {"dateTime": end.isoformat(), "timeZone": "UTC"},
+    }
+    if description:
+        event_body["description"] = description
+    if location:
+        event_body["location"] = location
+
+    def run_create() -> dict:
+        return service.events().insert(calendarId="primary", body=event_body).execute()
+
+    return await asyncio.to_thread(run_create)
+
+
 async def count_events(
     access_token: str,
     time_min: datetime,

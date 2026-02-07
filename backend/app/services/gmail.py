@@ -394,6 +394,37 @@ async def fetch_messages(
     return await asyncio.to_thread(run_batch_fetch)
 
 
+async def send_reply(
+    access_token: str,
+    to: str,
+    subject: str,
+    body: str,
+    in_reply_to: str | None = None,
+    thread_id: str | None = None,
+) -> dict:
+    """Send an email reply via Gmail API. Returns the sent message metadata."""
+    service = build_gmail_service(access_token)
+
+    from email.mime.text import MIMEText
+
+    msg = MIMEText(body)
+    msg["to"] = to
+    msg["subject"] = subject
+    if in_reply_to:
+        msg["In-Reply-To"] = in_reply_to
+        msg["References"] = in_reply_to
+
+    raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
+    body_payload: dict[str, Any] = {"raw": raw}
+    if thread_id:
+        body_payload["threadId"] = thread_id
+
+    def run_send() -> dict:
+        return service.users().messages().send(userId="me", body=body_payload).execute()
+
+    return await asyncio.to_thread(run_send)
+
+
 async def count_primary_messages(access_token: str) -> int:
     """Count inbox messages in the last 90 days (for preflight check)."""
     service = build_gmail_service(access_token)
