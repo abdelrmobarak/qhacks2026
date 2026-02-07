@@ -1,0 +1,27 @@
+# Python 3.12+
+# Pin exact versions for reproducible builds across the team
+
+# Web framework
+fastapi==0.115.6
+uvicorn==0.34.0
+
+# Environment & config
+pydantic==2.10.4
+pydantic-settings==2.7.1
+python-dotenv==1.0.1
+
+# HTTP
+httpx==0.28.1
+
+# Database (uncomment as needed)
+# sqlalchemy==2.0.36
+# alembic==1.14.1
+# asyncpg==0.30.0
+
+# Auth (uncomment as needed)
+# python-jose==3.3.0
+# passlib==1.7.4
+# bcrypt==4.2.1
+
+# Utilities
+python-multipart==0.0.20
