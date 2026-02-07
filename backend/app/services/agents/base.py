@@ -7,6 +7,7 @@ import time
 from typing import Any, cast
 
 import httpx
+from openrouter import OpenRouter
 
 from app.core.env import load_settings
 
@@ -355,11 +356,11 @@ def _call_openrouter(
     model: str,
     json_mode: bool,
 ) -> str:
-    """Call OpenRouter API (OpenAI-compatible)."""
+    """Call OpenRouter API using the official SDK."""
     if not settings.openrouter_api_key:
         raise ValueError("OPENROUTER_API_KEY not configured")
 
-    request_body: dict[str, Any] = {
+    kwargs: dict[str, Any] = {
         "model": model,
         "messages": [
             {"role": "system", "content": system_prompt},
@@ -370,39 +371,15 @@ def _call_openrouter(
     }
 
     if json_mode:
-        request_body["response_format"] = {"type": "json_object"}
+        kwargs["response_format"] = {"type": "json_object"}
 
-    headers = {
-        "Authorization": f"Bearer {settings.openrouter_api_key}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://sandbox.dynamis.dev",  # Optional: for OpenRouter analytics
-        "X-Title": "Sandbox Demo",  # Optional: for OpenRouter analytics
-    }
+    with OpenRouter(api_key=settings.openrouter_api_key) as client:
+        response = client.chat.send(**kwargs)
 
-    with httpx.Client(timeout=120) as client:  # Longer timeout for slower models
-        response = client.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers=headers,
-            json=request_body,
-        )
-
-        try:
-            response.raise_for_status()
-        except httpx.HTTPStatusError as e:
-            logger.error(f"OpenRouter API error: {response.status_code} - {response.text[:500]}")
-            raise RuntimeError(f"OpenRouter API error {response.status_code}") from e
-
-        payload = response.json()
-
-    try:
-        choice = payload["choices"][0]
-        message = choice["message"]
-        content = message["content"]
-        if not isinstance(content, str):
-            raise ValueError("Unexpected OpenRouter response content")
-        return content
-    except Exception as e:
-        raise ValueError(f"Unexpected OpenRouter payload: {payload}") from e
+    content = response.choices[0].message.content
+    if not isinstance(content, str):
+        raise ValueError("Unexpected OpenRouter response content")
+    return content
 
 
 def _call_llm_text(
