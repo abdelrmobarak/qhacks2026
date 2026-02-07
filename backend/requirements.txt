@@ -29,7 +29,7 @@ itsdangerous>=2.0
 stripe>=8.0
 
 # LLM
-# Uses `httpx` to call OpenAI Responses API.
+openrouter>=0.6
 
 # HTTP client
 httpx>=0.27
