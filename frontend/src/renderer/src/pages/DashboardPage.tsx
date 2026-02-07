@@ -105,7 +105,7 @@ export default function DashboardPage(): React.JSX.Element {
             {metrics.snapshot_window_days} days analyzed
           </p>
           <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold leading-[0.85] tracking-tight">
-            Your Wrapped
+            Saturdai
           </h1>
         </section>
 
