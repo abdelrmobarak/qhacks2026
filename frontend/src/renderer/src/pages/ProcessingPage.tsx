@@ -47,7 +47,7 @@ export default function ProcessingPage(): React.JSX.Element {
   return (
     <div className="min-h-screen bg-bg grain flex flex-col p-6 sm:p-10">
       <header className="flex items-center justify-between mb-auto">
-        <span className="font-mono text-xs text-fg-subtle uppercase tracking-widest">Wrapped</span>
+        <span className="font-mono text-xs text-fg-subtle uppercase tracking-widest">Saturdai</span>
       </header>
 
       <main className="flex-1 flex flex-col justify-center max-w-xl">

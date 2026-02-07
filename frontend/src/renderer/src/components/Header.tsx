@@ -7,7 +7,7 @@ export default function Header({ email, onLogout }: HeaderProps): React.JSX.Elem
   return (
     <header className="sticky top-0 z-40 bg-bg/80 backdrop-blur-sm border-b border-border">
       <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
-        <span className="font-mono text-xs text-fg-subtle uppercase tracking-widest">Wrapped</span>
+        <span className="font-mono text-xs text-fg-subtle uppercase tracking-widest">Saturdai</span>
         <div className="flex items-center gap-4">
           {email && <span className="text-sm text-fg-muted">{email}</span>}
           <button
