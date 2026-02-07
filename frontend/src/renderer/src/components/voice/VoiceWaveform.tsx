@@ -4,7 +4,7 @@ export default function VoiceWaveform() {
       {[...Array(5)].map((_, i) => (
         <div
           key={i}
-          className="w-1 bg-[#2BB3C0] rounded-full wave-bar"
+          className="w-1 bg-primary rounded-full wave-bar"
           style={{ animationDelay: `${i * 0.1}s` }}
         />
       ))}

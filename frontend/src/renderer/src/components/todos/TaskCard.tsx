@@ -4,8 +4,7 @@ import {
   CalendarIcon,
   EnvelopeIcon,
   ClockIcon
-} from '@heroicons/react/24/outline'
-import { CheckCircleIcon as CheckCircleIconSolid } from '@heroicons/react/24/solid'
+} from '@phosphor-icons/react'
 
 interface TaskCardProps {
   task: {
@@ -40,17 +39,17 @@ export default function TaskCard({
     <div
       className={`p-4 rounded-2xl border transition-all ${
         isCompleted
-          ? 'bg-[#2F8F6B]/5 border-[#2F8F6B]/20 opacity-60'
-          : 'bg-white/60 border-white/60 hover-lift'
+          ? 'bg-chart-2/5 border-chart-2/20 opacity-60'
+          : 'bg-card border-border hover-lift'
       }`}
     >
       <div className="flex items-start gap-3">
         {/* Checkbox */}
         <button onClick={handleToggle} className="flex-shrink-0 mt-0.5">
           {isCompleted ? (
-            <CheckCircleIconSolid className="w-6 h-6 text-[#2F8F6B]" />
+            <CheckCircleIcon className="w-6 h-6 text-chart-2" weight="fill" />
           ) : (
-            <CheckCircleIcon className="w-6 h-6 text-slate-400 hover:text-[#2F8F6B] transition-colors" />
+            <CheckCircleIcon className="w-6 h-6 text-muted-foreground hover:text-chart-2 transition-colors" />
           )}
         </button>
 
@@ -58,7 +57,7 @@ export default function TaskCard({
         <div className="flex-1 min-w-0">
           <p
             className={`text-sm font-medium ${
-              isCompleted ? 'line-through text-slate-500' : 'text-[#0B1B2B]'
+              isCompleted ? 'line-through text-muted-foreground' : 'text-foreground'
             }`}
           >
             {task.title}
@@ -67,17 +66,17 @@ export default function TaskCard({
           {/* Metadata */}
           <div className="flex items-center gap-3 mt-2">
             {task.sourceEmail && (
-              <span className="px-2 py-0.5 rounded-lg bg-[#2BB3C0]/10 text-[#2BB3C0] text-xs font-medium">
+              <span className="px-2 py-0.5 rounded-lg bg-primary/10 text-primary text-xs font-medium">
                 {task.sourceEmail}
               </span>
             )}
             {task.category && (
-              <span className="px-2 py-0.5 rounded-lg bg-white text-slate-600 text-xs font-medium">
+              <span className="px-2 py-0.5 rounded-lg bg-background text-muted-foreground text-xs font-medium">
                 {task.category}
               </span>
             )}
             {task.dueDay && (
-              <span className="text-xs text-slate-500 font-medium">{task.dueDay}</span>
+              <span className="text-xs text-muted-foreground font-medium">{task.dueDay}</span>
             )}
           </div>
 
@@ -86,7 +85,7 @@ export default function TaskCard({
             <div className="flex gap-2 mt-3">
               <button
                 onClick={() => onAddToCalendar?.(task.id)}
-                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white hover:bg-white/80 text-slate-600 text-xs font-medium transition-colors"
+                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-background hover:bg-accent text-muted-foreground text-xs font-medium transition-colors"
                 title="Add to Calendar"
               >
                 <CalendarIcon className="w-3.5 h-3.5" />
@@ -94,7 +93,7 @@ export default function TaskCard({
               </button>
               <button
                 onClick={() => onEmailFollowup?.(task.id)}
-                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white hover:bg-white/80 text-slate-600 text-xs font-medium transition-colors"
+                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-background hover:bg-accent text-muted-foreground text-xs font-medium transition-colors"
                 title="Email Follow-up"
               >
                 <EnvelopeIcon className="w-3.5 h-3.5" />
@@ -102,7 +101,7 @@ export default function TaskCard({
               </button>
               <button
                 onClick={() => onSnooze?.(task.id)}
-                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white hover:bg-white/80 text-slate-600 text-xs font-medium transition-colors"
+                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-background hover:bg-accent text-muted-foreground text-xs font-medium transition-colors"
                 title="Snooze"
               >
                 <ClockIcon className="w-3.5 h-3.5" />

@@ -84,10 +84,10 @@ export default function Inbox() {
       <div className="max-w-5xl mx-auto space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-semibold text-[#0B1B2B] tracking-tight mb-2">
+          <h1 className="text-3xl font-semibold text-foreground tracking-tight mb-2">
             Triage by the Pool
           </h1>
-          <p className="text-slate-600">Not a long email list, but triage-first organization.</p>
+          <p className="text-muted-foreground">Not a long email list, but triage-first organization.</p>
         </div>
 
         {/* Tabs */}
@@ -100,9 +100,9 @@ export default function Inbox() {
               <EmailCard key={email.id} email={email} onSelect={() => setSelectedEmail(email)} />
             ))
           ) : (
-            <div className="p-12 rounded-3xl bg-white/60 border border-white/60 text-center">
-              <p className="text-slate-500 text-lg">All caught up! 🌴</p>
-              <p className="text-slate-400 text-sm mt-2">No emails in this category.</p>
+            <div className="p-12 rounded-3xl bg-card border border-border text-center">
+              <p className="text-muted-foreground text-lg">All caught up! 🌴</p>
+              <p className="text-muted-foreground text-sm mt-2">No emails in this category.</p>
             </div>
           )}
         </div>

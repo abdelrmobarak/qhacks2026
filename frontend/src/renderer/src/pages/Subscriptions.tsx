@@ -81,14 +81,14 @@ export default function Subscriptions() {
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-semibold text-[#0B1B2B] tracking-tight mb-2">
+          <h1 className="text-3xl font-semibold text-foreground tracking-tight mb-2">
             Tide Tracker
           </h1>
-          <p className="text-slate-600">Track and manage all your subscriptions and bills.</p>
+          <p className="text-muted-foreground">Track and manage all your subscriptions and bills.</p>
         </div>
 
         {/* Summary Card */}
-        <div className="p-6 rounded-3xl bg-gradient-to-br from-[#2BB3C0] to-[#2F8F6B] text-white">
+        <div className="p-6 rounded-3xl bg-gradient-to-br from-primary to-chart-2 text-white">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm opacity-90">Total Monthly Spend</p>
@@ -115,8 +115,8 @@ export default function Subscriptions() {
               onClick={() => setFilter(category.toLowerCase())}
               className={`px-4 py-2 rounded-2xl font-medium text-sm whitespace-nowrap transition-all ${
                 filter === category.toLowerCase()
-                  ? 'bg-[#2BB3C0] text-white'
-                  : 'bg-white/60 text-slate-700 hover:bg-white'
+                  ? 'bg-primary text-white'
+                  : 'bg-card text-accent-foreground hover:bg-accent'
               }`}
             >
               {category}

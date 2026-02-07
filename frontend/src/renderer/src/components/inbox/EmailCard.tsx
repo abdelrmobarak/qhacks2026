@@ -1,9 +1,9 @@
 import {
-  PaperAirplaneIcon,
+  PaperPlaneTiltIcon,
   ClockIcon,
-  ArchiveBoxIcon,
+  ArchiveIcon,
   CheckCircleIcon
-} from '@heroicons/react/24/outline'
+} from '@phosphor-icons/react'
 
 interface EmailCardProps {
   email: {
@@ -42,13 +42,13 @@ export default function EmailCard({
   return (
     <div
       onClick={onSelect}
-      className="p-5 rounded-3xl bg-white/60 border border-white/60 hover-lift card-shadow cursor-pointer"
+      className="p-5 rounded-3xl bg-card border border-border hover-lift card-shadow cursor-pointer"
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
           {/* Avatar */}
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#2BB3C0] to-[#2F8F6B] flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-chart-2 flex items-center justify-center flex-shrink-0">
             <span className="text-white font-semibold text-sm">
               {email.from.charAt(0).toUpperCase()}
             </span>
@@ -56,7 +56,7 @@ export default function EmailCard({
 
           {/* Sender & Badges */}
           <div>
-            <p className="font-semibold text-[#0B1B2B]">{email.from}</p>
+            <p className="font-semibold text-foreground">{email.from}</p>
             <div className="flex items-center gap-2 mt-1">
               <span
                 className="px-2 py-0.5 rounded-full text-xs font-medium"
@@ -68,7 +68,7 @@ export default function EmailCard({
                 {email.intent}
               </span>
               {email.confidence === 'high' && (
-                <span className="px-2 py-0.5 rounded-full bg-[#2BB3C0]/10 text-[#2BB3C0] text-xs font-medium">
+                <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium">
                   Reply suggested
                 </span>
               )}
@@ -77,14 +77,14 @@ export default function EmailCard({
         </div>
 
         {/* Timestamp */}
-        <span className="text-xs text-slate-500 num">{email.timestamp}</span>
+        <span className="text-xs text-muted-foreground num">{email.timestamp}</span>
       </div>
 
       {/* Subject */}
-      <h3 className="font-semibold text-[#0B1B2B] tracking-tight mb-2">{email.subject}</h3>
+      <h3 className="font-semibold text-foreground tracking-tight mb-2">{email.subject}</h3>
 
       {/* Summary */}
-      <p className="text-sm text-slate-700 leading-relaxed mb-4 line-clamp-2">{email.summary}</p>
+      <p className="text-sm text-accent-foreground leading-relaxed mb-4 line-clamp-2">{email.summary}</p>
 
       {/* Actions */}
       <div className="flex gap-2">
@@ -93,9 +93,9 @@ export default function EmailCard({
             e.stopPropagation()
             onReply?.()
           }}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#2BB3C0] hover:bg-[#2BB3C0]/90 text-white font-medium text-sm transition-colors"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white font-medium text-sm transition-colors"
         >
-          <PaperAirplaneIcon className="w-4 h-4" />
+          <PaperPlaneTiltIcon className="w-4 h-4" />
           Reply
         </button>
         <button
@@ -103,7 +103,7 @@ export default function EmailCard({
             e.stopPropagation()
             onSnooze?.()
           }}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-white/80 text-slate-700 font-medium text-sm transition-colors"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-background hover:bg-accent text-accent-foreground font-medium text-sm transition-colors"
         >
           <ClockIcon className="w-4 h-4" />
           Snooze
@@ -113,9 +113,9 @@ export default function EmailCard({
             e.stopPropagation()
             onArchive?.()
           }}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-white/80 text-slate-700 font-medium text-sm transition-colors"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-background hover:bg-accent text-accent-foreground font-medium text-sm transition-colors"
         >
-          <ArchiveBoxIcon className="w-4 h-4" />
+          <ArchiveIcon className="w-4 h-4" />
           Archive
         </button>
         <button
@@ -123,7 +123,7 @@ export default function EmailCard({
             e.stopPropagation()
             onAddTodo?.()
           }}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-white/80 text-slate-700 font-medium text-sm transition-colors"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-background hover:bg-accent text-accent-foreground font-medium text-sm transition-colors"
         >
           <CheckCircleIcon className="w-4 h-4" />
           To-Do

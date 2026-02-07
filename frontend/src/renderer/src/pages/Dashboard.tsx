@@ -70,15 +70,15 @@ export default function Dashboard() {
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-semibold text-[#0B1B2B] tracking-tight mb-2">
+          <h1 className="text-3xl font-semibold text-foreground tracking-tight mb-2">
             Arrivals Lounge
           </h1>
-          <p className="text-slate-600">What needs your attention, without feeling like work.</p>
+          <p className="text-muted-foreground">What needs your attention, without feeling like work.</p>
         </div>
 
         {/* Today's Breeze - Priority Items */}
         <section>
-          <h2 className="text-lg font-semibold text-[#0B1B2B] tracking-tight mb-4">
+          <h2 className="text-lg font-semibold text-foreground tracking-tight mb-4">
             Today's Breeze
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -92,7 +92,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left Column - Inbox Triage */}
           <section>
-            <h2 className="text-lg font-semibold text-[#0B1B2B] tracking-tight mb-4">
+            <h2 className="text-lg font-semibold text-foreground tracking-tight mb-4">
               Inbox Triage
             </h2>
             <TriageStack emails={triageEmails} />
@@ -100,20 +100,20 @@ export default function Dashboard() {
 
           {/* Right Column - Newsletter TLDR Preview */}
           <section>
-            <h2 className="text-lg font-semibold text-[#0B1B2B] tracking-tight mb-4">
+            <h2 className="text-lg font-semibold text-foreground tracking-tight mb-4">
               Latest Newsletters
             </h2>
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (
                 <div
                   key={i}
-                  className="p-4 rounded-2xl bg-white/60 border border-white/60 hover-lift"
+                  className="p-4 rounded-2xl bg-card border border-border hover-lift"
                 >
                   <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#2BB3C0] to-[#2F8F6B]" />
+                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-chart-2" />
                     <div className="flex-1">
-                      <h3 className="font-semibold text-[#0B1B2B] text-sm">Tech Newsletter #{i}</h3>
-                      <p className="text-xs text-slate-600 mt-1 line-clamp-2">
+                      <h3 className="font-semibold text-foreground text-sm">Tech Newsletter #{i}</h3>
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                         Latest updates on AI developments and new framework releases...
                       </p>
                     </div>
@@ -126,7 +126,7 @@ export default function Dashboard() {
 
         {/* Upcoming Renewals */}
         <section>
-          <h2 className="text-lg font-semibold text-[#0B1B2B] tracking-tight mb-4">
+          <h2 className="text-lg font-semibold text-foreground tracking-tight mb-4">
             Upcoming Renewals
           </h2>
           <RenewalTimeline renewals={upcomingRenewals} />
@@ -134,11 +134,11 @@ export default function Dashboard() {
 
         {/* Weekly To-Do */}
         <section>
-          <h2 className="text-lg font-semibold text-[#0B1B2B] tracking-tight mb-4">
+          <h2 className="text-lg font-semibold text-foreground tracking-tight mb-4">
             This Week's Plan
           </h2>
           <WeekStrip />
-          <div className="mt-4 p-6 rounded-3xl bg-white/60 border border-white/60">
+          <div className="mt-4 p-6 rounded-3xl bg-card border border-border">
             <div className="space-y-3">
               {[
                 'Review Q1 budget proposal',
@@ -148,10 +148,10 @@ export default function Dashboard() {
                 <div key={index} className="flex items-center gap-3">
                   <input
                     type="checkbox"
-                    className="w-5 h-5 rounded-lg border-2 border-slate-300 text-[#2BB3C0] focus:ring-[#2BB3C0]"
+                    className="w-5 h-5 rounded-lg border-2 border-border text-primary focus:ring-primary"
                   />
-                  <span className="text-sm text-slate-700">{task}</span>
-                  <span className="ml-auto px-2 py-1 rounded-lg bg-[#2BB3C0]/10 text-[#2BB3C0] text-xs font-medium">
+                  <span className="text-sm text-accent-foreground">{task}</span>
+                  <span className="ml-auto px-2 py-1 rounded-lg bg-primary/10 text-primary text-xs font-medium">
                     Mon
                   </span>
                 </div>

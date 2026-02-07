@@ -19,15 +19,15 @@ export default function InboxTabs({ tabs, activeTab, onTabChange }: InboxTabsPro
           onClick={() => onTabChange(tab.id)}
           className={`px-6 py-3 rounded-2xl font-medium text-sm whitespace-nowrap transition-all ${
             activeTab === tab.id
-              ? 'bg-[#2BB3C0] text-white'
-              : 'bg-white/60 text-slate-700 hover:bg-white'
+              ? 'bg-primary text-white'
+              : 'bg-card text-accent-foreground hover:bg-accent'
           }`}
         >
           {tab.label}
           {tab.count !== undefined && tab.count > 0 && (
             <span
               className={`ml-2 px-2 py-0.5 rounded-full text-xs font-semibold ${
-                activeTab === tab.id ? 'bg-white/20' : 'bg-[#2BB3C0]/10 text-[#2BB3C0]'
+                activeTab === tab.id ? 'bg-white/20' : 'bg-primary/10 text-primary'
               }`}
             >
               {tab.count}

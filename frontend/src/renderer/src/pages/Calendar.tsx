@@ -2,7 +2,7 @@ import { useState } from 'react'
 import MainLayout from '../components/layout/MainLayout'
 import WeekGrid from '../components/calendar/WeekGrid'
 import AgendaList from '../components/calendar/AgendaList'
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
+import { CaretLeftIcon, CaretRightIcon } from '@phosphor-icons/react'
 
 const mockEvents = [
   {
@@ -69,10 +69,10 @@ export default function Calendar() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-semibold text-[#0B1B2B] tracking-tight mb-2">
+            <h1 className="text-3xl font-semibold text-foreground tracking-tight mb-2">
               Palm View
             </h1>
-            <p className="text-slate-600">Calendar with AI-powered scheduling suggestions.</p>
+            <p className="text-muted-foreground">Calendar with AI-powered scheduling suggestions.</p>
           </div>
 
           {/* View Toggle */}
@@ -81,8 +81,8 @@ export default function Calendar() {
               onClick={() => setView('day')}
               className={`px-4 py-2 rounded-xl font-medium text-sm transition-colors ${
                 view === 'day'
-                  ? 'bg-[#2BB3C0] text-white'
-                  : 'bg-white/60 text-slate-700 hover:bg-white'
+                  ? 'bg-primary text-white'
+                  : 'bg-card text-accent-foreground hover:bg-accent'
               }`}
             >
               Day
@@ -91,8 +91,8 @@ export default function Calendar() {
               onClick={() => setView('week')}
               className={`px-4 py-2 rounded-xl font-medium text-sm transition-colors ${
                 view === 'week'
-                  ? 'bg-[#2BB3C0] text-white'
-                  : 'bg-white/60 text-slate-700 hover:bg-white'
+                  ? 'bg-primary text-white'
+                  : 'bg-card text-accent-foreground hover:bg-accent'
               }`}
             >
               Week
@@ -105,24 +105,24 @@ export default function Calendar() {
           <div className="flex items-center gap-3">
             <button
               onClick={goToPreviousWeek}
-              className="p-2 rounded-lg bg-white/60 hover:bg-white transition-colors"
+              className="p-2 rounded-lg bg-card hover:bg-accent transition-colors"
             >
-              <ChevronLeftIcon className="w-5 h-5 text-slate-700" />
+              <CaretLeftIcon className="w-5 h-5 text-accent-foreground" />
             </button>
             <button
               onClick={goToNextWeek}
-              className="p-2 rounded-lg bg-white/60 hover:bg-white transition-colors"
+              className="p-2 rounded-lg bg-card hover:bg-accent transition-colors"
             >
-              <ChevronRightIcon className="w-5 h-5 text-slate-700" />
+              <CaretRightIcon className="w-5 h-5 text-accent-foreground" />
             </button>
-            <h2 className="text-lg font-semibold text-[#0B1B2B]">
+            <h2 className="text-lg font-semibold text-foreground">
               {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
             </h2>
           </div>
 
           <button
             onClick={goToToday}
-            className="px-4 py-2 rounded-xl bg-white/60 hover:bg-white text-slate-700 font-medium text-sm transition-colors"
+            className="px-4 py-2 rounded-xl bg-card hover:bg-accent text-accent-foreground font-medium text-sm transition-colors"
           >
             Today
           </button>

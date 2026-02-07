@@ -21,10 +21,10 @@ export default function WeekStrip({ selectedDay = 0, onDaySelect }: WeekStripPro
             onClick={() => onDaySelect?.(index)}
             className={`flex-1 px-4 py-3 rounded-2xl font-medium text-sm transition-all ${
               isSelected
-                ? 'bg-[#2BB3C0] text-white'
+                ? 'bg-primary text-white'
                 : isToday
-                  ? 'bg-white border-2 border-[#2BB3C0] text-[#2BB3C0]'
-                  : 'bg-white/60 text-slate-700 hover:bg-white'
+                  ? 'bg-background border-2 border-primary text-primary'
+                  : 'bg-card text-accent-foreground hover:bg-accent'
             }`}
           >
             <div className="text-center">

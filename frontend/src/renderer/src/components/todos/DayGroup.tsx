@@ -26,14 +26,14 @@ export default function DayGroup({ day, date, tasks, isToday = false }: DayGroup
         <div className="flex items-center gap-3">
           <h3
             className={`text-lg font-semibold tracking-tight ${
-              isToday ? 'text-[#2BB3C0]' : 'text-[#0B1B2B]'
+              isToday ? 'text-primary' : 'text-foreground'
             }`}
           >
             {day}
           </h3>
-          {date && <span className="text-sm text-slate-500">{date}</span>}
+          {date && <span className="text-sm text-muted-foreground">{date}</span>}
         </div>
-        <span className="text-xs text-slate-500 num">
+        <span className="text-xs text-muted-foreground num">
           {completedCount} / {tasks.length} done
         </span>
       </div>

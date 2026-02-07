@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { XMarkIcon, MicrophoneIcon, StopIcon, KeyboardIcon } from '@heroicons/react/24/outline'
+import { XIcon, MicrophoneIcon, StopIcon, KeyboardIcon } from '@phosphor-icons/react'
 import VoiceWaveform from './VoiceWaveform'
 import ReplyDraftCard from './ReplyDraftCard'
 import SummaryCard from './SummaryCard'
@@ -65,31 +65,31 @@ export default function VoiceModal({ isOpen, onClose }: VoiceModalProps) {
       <div className="w-full max-w-4xl mx-4 mb-4">
         <div className="glass rounded-3xl card-shadow overflow-hidden" style={{ maxHeight: '85vh' }}>
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-white/40">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border">
             <div className="flex items-center gap-3">
-              <div className="w-2 h-2 rounded-full bg-[#2F8F6B] pulse-soft" />
-              <h2 className="text-lg font-semibold text-[#0B1B2B] tracking-tight">
+              <div className="w-2 h-2 rounded-full bg-chart-2 pulse-soft" />
+              <h2 className="text-lg font-semibold text-foreground tracking-tight">
                 Voice Session
               </h2>
             </div>
             <button
               onClick={onClose}
-              className="p-2 rounded-lg hover:bg-white/60 transition-colors"
+              className="p-2 rounded-lg hover:bg-accent transition-colors"
             >
-              <XMarkIcon className="w-6 h-6 text-slate-600" />
+              <XIcon className="w-6 h-6 text-muted-foreground" />
             </button>
           </div>
 
           {/* Input Mode Toggle + Waveform */}
-          <div className="px-6 py-4 border-b border-white/40 bg-white/30">
+          <div className="px-6 py-4 border-b border-border bg-white/30">
             <div className="flex items-center justify-between mb-4">
               <div className="flex gap-2">
                 <button
                   onClick={() => setInputMode('voice')}
                   className={`px-4 py-2 rounded-xl font-medium text-sm transition-all ${
                     inputMode === 'voice'
-                      ? 'bg-[#2BB3C0] text-white'
-                      : 'bg-white/60 text-slate-700 hover:bg-white'
+                      ? 'bg-primary text-white'
+                      : 'bg-card text-accent-foreground hover:bg-accent'
                   }`}
                 >
                   <MicrophoneIcon className="w-4 h-4 inline mr-2" />
@@ -99,8 +99,8 @@ export default function VoiceModal({ isOpen, onClose }: VoiceModalProps) {
                   onClick={() => setInputMode('text')}
                   className={`px-4 py-2 rounded-xl font-medium text-sm transition-all ${
                     inputMode === 'text'
-                      ? 'bg-[#2BB3C0] text-white'
-                      : 'bg-white/60 text-slate-700 hover:bg-white'
+                      ? 'bg-primary text-white'
+                      : 'bg-card text-accent-foreground hover:bg-accent'
                   }`}
                 >
                   <KeyboardIcon className="w-4 h-4 inline mr-2" />
@@ -111,10 +111,10 @@ export default function VoiceModal({ isOpen, onClose }: VoiceModalProps) {
               {/* State Indicator */}
               <div className="flex items-center gap-2">
                 {voiceState === 'listening' && (
-                  <span className="text-sm text-[#2BB3C0] font-medium">Listening...</span>
+                  <span className="text-sm text-primary font-medium">Listening...</span>
                 )}
                 {voiceState === 'thinking' && (
-                  <span className="text-sm text-slate-600 font-medium">Processing...</span>
+                  <span className="text-sm text-muted-foreground font-medium">Processing...</span>
                 )}
               </div>
             </div>
@@ -128,7 +128,7 @@ export default function VoiceModal({ isOpen, onClose }: VoiceModalProps) {
               <input
                 type="text"
                 placeholder="Type your command..."
-                className="w-full px-4 py-3 rounded-2xl bg-white/60 border border-white/60 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#2BB3C0]/50"
+                className="w-full px-4 py-3 rounded-2xl bg-card border border-border text-sm text-accent-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
             )}
           </div>
@@ -137,11 +137,11 @@ export default function VoiceModal({ isOpen, onClose }: VoiceModalProps) {
           <div className="px-6 py-4 overflow-y-auto" style={{ maxHeight: '400px' }}>
             {conversation.length === 0 ? (
               <div className="text-center py-12">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#2BB3C0] to-[#2F8F6B] mx-auto flex items-center justify-center mb-4">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-chart-2 mx-auto flex items-center justify-center mb-4">
                   <MicrophoneIcon className="w-8 h-8 text-white" />
                 </div>
-                <p className="text-slate-600 font-medium mb-2">Start a conversation</p>
-                <p className="text-sm text-slate-500">
+                <p className="text-muted-foreground font-medium mb-2">Start a conversation</p>
+                <p className="text-sm text-muted-foreground">
                   Ask me to summarize emails, draft replies, or manage your tasks
                 </p>
               </div>
@@ -153,7 +153,7 @@ export default function VoiceModal({ isOpen, onClose }: VoiceModalProps) {
                     className={`flex gap-3 fade-in ${turn.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
                     {turn.role === 'assistant' && (
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#2BB3C0] to-[#2F8F6B] flex items-center justify-center flex-shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-chart-2 flex items-center justify-center flex-shrink-0">
                         <span className="text-white font-bold text-xs">AI</span>
                       </div>
                     )}
@@ -161,15 +161,15 @@ export default function VoiceModal({ isOpen, onClose }: VoiceModalProps) {
                     <div
                       className={`max-w-[70%] ${
                         turn.role === 'user'
-                          ? 'bg-[#2BB3C0] text-white rounded-3xl rounded-tr-lg'
-                          : 'bg-white/60 border border-white/60 rounded-3xl rounded-tl-lg'
+                          ? 'bg-primary text-white rounded-3xl rounded-tr-lg'
+                          : 'bg-card border border-border rounded-3xl rounded-tl-lg'
                       } px-4 py-3`}
                     >
-                      <p className={`text-sm ${turn.role === 'user' ? 'text-white' : 'text-slate-700'}`}>
+                      <p className={`text-sm ${turn.role === 'user' ? 'text-white' : 'text-accent-foreground'}`}>
                         {turn.content}
                       </p>
                       <span
-                        className={`text-xs mt-2 block ${turn.role === 'user' ? 'text-white/70' : 'text-slate-400'}`}
+                        className={`text-xs mt-2 block ${turn.role === 'user' ? 'text-white/70' : 'text-muted-foreground'}`}
                       >
                         {turn.timestamp.toLocaleTimeString([], {
                           hour: '2-digit',
@@ -179,7 +179,7 @@ export default function VoiceModal({ isOpen, onClose }: VoiceModalProps) {
                     </div>
 
                     {turn.role === 'user' && (
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#FF6B6B] to-[#2BB3C0] flex items-center justify-center flex-shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-destructive to-primary flex items-center justify-center flex-shrink-0">
                         <span className="text-white font-semibold text-xs">A</span>
                       </div>
                     )}
@@ -207,7 +207,7 @@ export default function VoiceModal({ isOpen, onClose }: VoiceModalProps) {
             {/* Thinking State */}
             {voiceState === 'thinking' && (
               <div className="flex items-center justify-center py-8">
-                <div className="relative w-48 h-1 bg-white/60 rounded-full overflow-hidden">
+                <div className="relative w-48 h-1 bg-card rounded-full overflow-hidden">
                   <div className="absolute inset-0 shimmer rounded-full" />
                 </div>
               </div>
@@ -215,15 +215,15 @@ export default function VoiceModal({ isOpen, onClose }: VoiceModalProps) {
           </div>
 
           {/* Action Strip */}
-          <div className="px-6 py-4 border-t border-white/40 bg-white/30">
+          <div className="px-6 py-4 border-t border-border bg-white/30">
             <div className="flex items-center justify-between">
               {/* Primary Action */}
               <button
                 onClick={handleMicClick}
                 className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-medium transition-all ${
                   voiceState === 'listening'
-                    ? 'bg-[#FF6B6B] hover:bg-[#FF6B6B]/90 text-white'
-                    : 'bg-[#2BB3C0] hover:bg-[#2BB3C0]/90 text-white'
+                    ? 'bg-destructive hover:bg-destructive/90 text-white'
+                    : 'bg-primary hover:bg-primary/90 text-white'
                 }`}
               >
                 {voiceState === 'listening' ? (
@@ -243,17 +243,17 @@ export default function VoiceModal({ isOpen, onClose }: VoiceModalProps) {
               <div className="flex gap-2">
                 {voiceState === 'ready' && (
                   <>
-                    <button className="px-4 py-2 rounded-xl bg-white/60 hover:bg-white text-slate-700 font-medium text-sm transition-colors">
+                    <button className="px-4 py-2 rounded-xl bg-card hover:bg-accent text-accent-foreground font-medium text-sm transition-colors">
                       Approve
                     </button>
-                    <button className="px-4 py-2 rounded-xl bg-white/60 hover:bg-white text-slate-700 font-medium text-sm transition-colors">
+                    <button className="px-4 py-2 rounded-xl bg-card hover:bg-accent text-accent-foreground font-medium text-sm transition-colors">
                       Edit
                     </button>
                   </>
                 )}
                 <button
                   onClick={onClose}
-                  className="px-4 py-2 rounded-xl bg-white/60 hover:bg-white text-slate-700 font-medium text-sm transition-colors"
+                  className="px-4 py-2 rounded-xl bg-card hover:bg-accent text-accent-foreground font-medium text-sm transition-colors"
                 >
                   Close
                 </button>
@@ -261,12 +261,12 @@ export default function VoiceModal({ isOpen, onClose }: VoiceModalProps) {
             </div>
 
             {/* Hotkey Hints */}
-            <div className="mt-3 flex gap-4 text-xs text-slate-500">
+            <div className="mt-3 flex gap-4 text-xs text-muted-foreground">
               <span>
-                <kbd className="px-2 py-1 rounded bg-white/60 font-mono">Space</kbd> Push-to-talk
+                <kbd className="px-2 py-1 rounded bg-card font-mono">Space</kbd> Push-to-talk
               </span>
               <span>
-                <kbd className="px-2 py-1 rounded bg-white/60 font-mono">Esc</kbd> Close
+                <kbd className="px-2 py-1 rounded bg-card font-mono">Esc</kbd> Close
               </span>
             </div>
           </div>

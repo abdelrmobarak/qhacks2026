@@ -24,10 +24,10 @@ export default function WeekGrid({ events, startDate = new Date() }: WeekGridPro
   })
 
   return (
-    <div className="rounded-3xl bg-white/60 border border-white/60 overflow-hidden">
+    <div className="rounded-3xl bg-card border border-border overflow-hidden">
       {/* Header */}
-      <div className="grid grid-cols-8 border-b border-white/40">
-        <div className="p-3 border-r border-white/40" />
+      <div className="grid grid-cols-8 border-b border-border">
+        <div className="p-3 border-r border-border" />
         {days.map((day, i) => {
           const date = weekDates[i]
           const isToday = date.toDateString() === new Date().toDateString()
@@ -35,14 +35,14 @@ export default function WeekGrid({ events, startDate = new Date() }: WeekGridPro
           return (
             <div
               key={day}
-              className={`p-3 text-center border-r border-white/40 last:border-r-0 ${
-                isToday ? 'bg-[#2BB3C0]/10' : ''
+              className={`p-3 text-center border-r border-border last:border-r-0 ${
+                isToday ? 'bg-primary/10' : ''
               }`}
             >
-              <div className="text-xs text-slate-500 font-medium">{day}</div>
+              <div className="text-xs text-muted-foreground font-medium">{day}</div>
               <div
                 className={`text-sm font-semibold mt-1 ${
-                  isToday ? 'text-[#2BB3C0]' : 'text-[#0B1B2B]'
+                  isToday ? 'text-primary' : 'text-foreground'
                 }`}
               >
                 {date.getDate()}
@@ -56,9 +56,9 @@ export default function WeekGrid({ events, startDate = new Date() }: WeekGridPro
       <div className="overflow-y-auto max-h-[600px]">
         <div className="grid grid-cols-8">
           {/* Time column */}
-          <div className="border-r border-white/40">
+          <div className="border-r border-border">
             {hours.map((hour) => (
-              <div key={hour} className="h-16 border-b border-white/40 p-2 text-xs text-slate-500">
+              <div key={hour} className="h-16 border-b border-border p-2 text-xs text-muted-foreground">
                 {hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`}
               </div>
             ))}
@@ -66,9 +66,9 @@ export default function WeekGrid({ events, startDate = new Date() }: WeekGridPro
 
           {/* Day columns */}
           {days.map((day, dayIndex) => (
-            <div key={day} className="border-r border-white/40 last:border-r-0 relative">
+            <div key={day} className="border-r border-border last:border-r-0 relative">
               {hours.map((hour) => (
-                <div key={hour} className="h-16 border-b border-white/40" />
+                <div key={hour} className="h-16 border-b border-border" />
               ))}
 
               {/* Events for this day */}

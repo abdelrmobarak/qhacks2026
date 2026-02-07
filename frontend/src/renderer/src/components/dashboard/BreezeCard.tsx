@@ -1,4 +1,4 @@
-import { ClockIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline'
+import { ClockIcon, WarningCircleIcon } from '@phosphor-icons/react'
 
 interface BreezeCardProps {
   type: 'reply' | 'bill' | 'meeting'
@@ -38,23 +38,23 @@ export default function BreezeCard({
   const config = typeConfig[type]
 
   return (
-    <div className="p-5 rounded-3xl bg-white/60 border border-white/60 hover-lift card-shadow">
+    <div className="p-5 rounded-3xl bg-card border border-border hover-lift card-shadow">
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-start gap-3">
           <span className="text-2xl">{config.icon}</span>
           <div className="flex-1">
-            <h3 className="font-semibold text-[#0B1B2B] tracking-tight">{title}</h3>
-            <p className="text-sm text-slate-600 mt-1">{description}</p>
+            <h3 className="font-semibold text-foreground tracking-tight">{title}</h3>
+            <p className="text-sm text-muted-foreground mt-1">{description}</p>
           </div>
         </div>
         {priority === 'high' && (
-          <ExclamationCircleIcon className="w-5 h-5 text-[#FF6B6B]" />
+          <WarningCircleIcon className="w-5 h-5 text-destructive" />
         )}
       </div>
 
       <div className="flex items-center justify-between">
         {time && (
-          <div className="flex items-center gap-1.5 text-slate-500">
+          <div className="flex items-center gap-1.5 text-muted-foreground">
             <ClockIcon className="w-4 h-4" />
             <span className="text-xs font-medium">{time}</span>
           </div>

@@ -1,13 +1,13 @@
 import { NavLink } from 'react-router-dom'
 import {
-  InboxIcon,
+  TrayIcon,
   NewspaperIcon,
   CreditCardIcon,
   CheckCircleIcon,
   CalendarIcon,
   PhoneIcon,
-  SparklesIcon
-} from '@heroicons/react/24/outline'
+  SparkleIcon
+} from '@phosphor-icons/react'
 
 interface NavItem {
   to: string
@@ -16,18 +16,18 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { to: '/dashboard', icon: InboxIcon, label: 'Inbox' },
+  { to: '/dashboard', icon: TrayIcon, label: 'Inbox' },
   { to: '/newsletters', icon: NewspaperIcon, label: 'Newsletters' },
   { to: '/subscriptions', icon: CreditCardIcon, label: 'Subscriptions' },
   { to: '/todos', icon: CheckCircleIcon, label: 'To-Do' },
   { to: '/calendar', icon: CalendarIcon, label: 'Calendar' },
   { to: '/calls', icon: PhoneIcon, label: 'Calls' },
-  { to: '/agent', icon: SparklesIcon, label: 'Agent Mode' }
+  { to: '/agent', icon: SparkleIcon, label: 'Agent Mode' }
 ]
 
 export default function LeftRail() {
   return (
-    <div className="w-20 glass border-r border-white/60 flex flex-col items-center py-6 gap-2">
+    <div className="w-20 glass border-r border-border flex flex-col items-center py-6 gap-2">
       {navItems.map((item) => (
         <NavLink
           key={item.to}
@@ -35,8 +35,8 @@ export default function LeftRail() {
           className={({ isActive }) =>
             `group flex flex-col items-center justify-center w-14 h-14 rounded-2xl transition-all ${
               isActive
-                ? 'bg-[#2BB3C0]/10 text-[#2BB3C0]'
-                : 'text-slate-500 hover:bg-white/60 hover:text-slate-700'
+                ? 'bg-primary/10 text-primary'
+                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
             }`
           }
         >

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import MainLayout from '../components/layout/MainLayout'
 import NewsletterCard from '../components/newsletters/NewsletterCard'
-import { FunnelIcon } from '@heroicons/react/24/outline'
+import { FunnelIcon } from '@phosphor-icons/react'
 
 const mockNewsletters = [
   {
@@ -72,14 +72,14 @@ export default function Newsletters() {
         {/* Header */}
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-semibold text-[#0B1B2B] tracking-tight mb-2">
+            <h1 className="text-3xl font-semibold text-foreground tracking-tight mb-2">
               Sunset Digest
             </h1>
-            <p className="text-slate-600">Clean TLDR summaries of your newsletter subscriptions.</p>
+            <p className="text-muted-foreground">Clean TLDR summaries of your newsletter subscriptions.</p>
           </div>
 
           {/* Filter */}
-          <button className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/60 hover:bg-white text-slate-700 font-medium transition-colors">
+          <button className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-card hover:bg-accent text-accent-foreground font-medium transition-colors">
             <FunnelIcon className="w-4 h-4" />
             Filter
           </button>
@@ -93,8 +93,8 @@ export default function Newsletters() {
               onClick={() => setFilter(filterOption.toLowerCase())}
               className={`px-4 py-2 rounded-2xl font-medium text-sm whitespace-nowrap transition-all ${
                 filter === filterOption.toLowerCase()
-                  ? 'bg-[#2BB3C0] text-white'
-                  : 'bg-white/60 text-slate-700 hover:bg-white'
+                  ? 'bg-primary text-white'
+                  : 'bg-card text-accent-foreground hover:bg-accent'
               }`}
             >
               {filterOption}

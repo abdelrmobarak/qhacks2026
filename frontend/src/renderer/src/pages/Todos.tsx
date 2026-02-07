@@ -2,7 +2,7 @@ import { useState } from 'react'
 import MainLayout from '../components/layout/MainLayout'
 import DayGroup from '../components/todos/DayGroup'
 import WeekStrip from '../components/dashboard/WeekStrip'
-import { PlusIcon, MicrophoneIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, MicrophoneIcon } from '@phosphor-icons/react'
 
 const mockTasks = {
   monday: [
@@ -68,8 +68,8 @@ export default function Todos() {
       <div className="max-w-5xl mx-auto space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-semibold text-[#0B1B2B] tracking-tight mb-2">Beach Plan</h1>
-          <p className="text-slate-600">
+          <h1 className="text-3xl font-semibold text-foreground tracking-tight mb-2">Beach Plan</h1>
+          <p className="text-muted-foreground">
             Auto-generated tasks from emails, voice-first management.
           </p>
         </div>
@@ -79,11 +79,11 @@ export default function Todos() {
 
         {/* Quick Actions */}
         <div className="flex gap-3">
-          <button className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-[#2BB3C0] hover:bg-[#2BB3C0]/90 text-white font-medium transition-colors">
+          <button className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-primary hover:bg-primary/90 text-white font-medium transition-colors">
             <MicrophoneIcon className="w-4 h-4" />
             Add Task by Voice
           </button>
-          <button className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/60 hover:bg-white text-slate-700 font-medium transition-colors">
+          <button className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-card hover:bg-accent text-accent-foreground font-medium transition-colors">
             <PlusIcon className="w-4 h-4" />
             Add Task
           </button>
@@ -99,16 +99,16 @@ export default function Todos() {
               isToday={selectedDay === new Date().getDay() - 1}
             />
           ) : (
-            <div className="p-12 rounded-3xl bg-white/60 border border-white/60 text-center">
-              <p className="text-slate-500 text-lg">No tasks scheduled for this day 🏖️</p>
-              <p className="text-slate-400 text-sm mt-2">Add a task to get started.</p>
+            <div className="p-12 rounded-3xl bg-card border border-border text-center">
+              <p className="text-muted-foreground text-lg">No tasks scheduled for this day 🏖️</p>
+              <p className="text-muted-foreground text-sm mt-2">Add a task to get started.</p>
             </div>
           )}
         </div>
 
         {/* Weekly Overview */}
-        <div className="p-6 rounded-3xl bg-white/60 border border-white/60">
-          <h3 className="text-lg font-semibold text-[#0B1B2B] tracking-tight mb-4">
+        <div className="p-6 rounded-3xl bg-card border border-border">
+          <h3 className="text-lg font-semibold text-foreground tracking-tight mb-4">
             Week Overview
           </h3>
           <div className="space-y-3">
@@ -118,14 +118,14 @@ export default function Todos() {
 
               return (
                 <div key={day} className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-slate-700 capitalize">{day}</span>
+                  <span className="text-sm font-medium text-accent-foreground capitalize">{day}</span>
                   <div className="flex items-center gap-3">
-                    <span className="text-xs text-slate-500 num">
+                    <span className="text-xs text-muted-foreground num">
                       {completedCount} / {totalCount}
                     </span>
-                    <div className="w-32 h-2 bg-white rounded-full overflow-hidden">
+                    <div className="w-32 h-2 bg-background rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-gradient-to-r from-[#2F8F6B] to-[#2BB3C0] rounded-full transition-all"
+                        className="h-full bg-gradient-to-r from-chart-2 to-primary rounded-full transition-all"
                         style={{
                           width: totalCount > 0 ? `${(completedCount / totalCount) * 100}%` : '0%'
                         }}
