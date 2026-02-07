@@ -4,6 +4,9 @@
     "src/renderer/src/env.d.ts",
     "src/renderer/src/**/*",
     "src/renderer/src/**/*.tsx",
+    "src/components/**/*",
+    "src/lib/**/*",
+    "src/hooks/**/*",
     "src/preload/*.d.ts"
   ],
   "compilerOptions": {
@@ -13,6 +16,9 @@
     "paths": {
       "@renderer/*": [
         "src/renderer/src/*"
+      ],
+      "@/*": [
+        "src/*"
       ]
     }
   }
