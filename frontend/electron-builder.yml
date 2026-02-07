@@ -1,5 +1,9 @@
 appId: com.electron.app
 productName: frontend
+protocols:
+  - name: Saturdai
+    schemes:
+      - saturdai
 directories:
   buildResources: build
 files:

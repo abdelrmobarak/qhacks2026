@@ -5,7 +5,12 @@ const api = {
   startGoogleAuth: (): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('auth:start-google'),
   openExternal: (url: string): Promise<{ success: boolean }> =>
-    ipcRenderer.invoke('auth:open-external', url)
+    ipcRenderer.invoke('auth:open-external', url),
+  onAuthCompleted: (callback: () => void): (() => void) => {
+    const listener = (): void => callback()
+    ipcRenderer.on('auth:completed', listener)
+    return () => ipcRenderer.removeListener('auth:completed', listener)
+  }
 }
 
 if (process.contextIsolated) {

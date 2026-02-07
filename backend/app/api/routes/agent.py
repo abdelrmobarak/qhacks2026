@@ -21,7 +21,9 @@ from app.services.agents.email_agent import (
     categorize_emails,
     create_tldr_digest,
     detect_subscriptions,
+    extract_todos,
 )
+from app.services.embedding import search_emails as semantic_search_emails
 
 router = APIRouter()
 
@@ -44,7 +46,13 @@ class CommandRequest(BaseModel):
     command: str
 
 
-async def _execute_action(action: str, params: dict, access_token: str) -> tuple[dict, str]:
+async def _execute_action(
+    action: str,
+    params: dict,
+    access_token: str,
+    user_id: "UUIDType | None" = None,
+    db: "AsyncSession | None" = None,
+) -> tuple[dict, str]:
     """Execute a routed action. Returns (result_dict, human_message)."""
 
     if action in ("summarize_emails", "create_tldr"):
@@ -57,7 +65,15 @@ async def _execute_action(action: str, params: dict, access_token: str) -> tuple
         messages = await fetch_messages(access_token, msg_ids, include_body=True)
         email_dicts = [_format_gmail_message(m) for m in messages if not m.is_automated_sender]
         digest = await asyncio.to_thread(create_tldr_digest, email_dicts)
-        return digest, f"Here's your email digest with {len(digest.get('highlights', []))} highlights."
+        summary = digest.get("summary", "")
+        highlights = digest.get("highlights", [])
+        parts = [summary] if summary else []
+        for highlight in highlights:
+            gist = highlight.get("gist", "")
+            sender = highlight.get("from", "")
+            action = " (action needed)" if highlight.get("action_needed") else ""
+            parts.append(f"- {sender}: {gist}{action}")
+        return digest, "\n".join(parts) if parts else "No highlights found."
 
     if action == "suggest_replies" or action == "fetch_recent":
         message_refs = await list_messages(
@@ -89,6 +105,19 @@ async def _execute_action(action: str, params: dict, access_token: str) -> tuple
         subs = await asyncio.to_thread(detect_subscriptions, email_dicts)
         return {"subscriptions": subs}, f"Found {len(subs)} subscriptions/bills."
 
+    if action == "generate_todos":
+        message_refs = await list_messages(
+            access_token, query="in:inbox newer_than:7d -category:promotions", max_results=40
+        )
+        msg_ids = [m["id"] for m in message_refs if isinstance(m, dict) and "id" in m]
+        if not msg_ids:
+            return {"todos": []}, "No recent emails found to extract tasks from."
+        messages = await fetch_messages(access_token, msg_ids, include_body=True)
+        email_dicts = [_format_gmail_message(m) for m in messages if not m.is_automated_sender]
+        todos_result = await asyncio.to_thread(extract_todos, email_dicts)
+        todo_count = len(todos_result.get("todos", []))
+        return todos_result, f"Found {todo_count} action items from your recent emails."
+
     if action == "add_to_calendar":
         # Parse date/time from parameters
         date_str = params.get("date", "")
@@ -119,7 +148,17 @@ async def _execute_action(action: str, params: dict, access_token: str) -> tuple
             "html_link": result.get("htmlLink"),
         }, f"Created calendar event: {summary}"
 
-    return {}, "I didn't understand that command. Try: 'summarize my emails', 'show my subscriptions', or 'add meeting to calendar'."
+    if action == "search_emails":
+        query_text = params.get("query", "")
+        if not query_text:
+            return {}, "Please provide a search query."
+        if user_id is None or db is None:
+            return {}, "Search is unavailable right now."
+        result = await semantic_search_emails(user_id, query_text, access_token, db)
+        email_count = len(result.get("emails", []))
+        return result, result.get("summary", f"Found {email_count} matching emails.")
+
+    return {}, "I didn't understand that command. Try: 'summarize my emails', 'search my emails about [topic]', or 'add meeting to calendar'."
 
 
 @router.post("/command")
@@ -137,7 +176,7 @@ async def agent_command(
     params = routing.get("parameters", {})
 
     # Execute the action
-    result, message = await _execute_action(action, params, access_token)
+    result, message = await _execute_action(action, params, access_token, user_id=user.id, db=db)
 
     return {
         "action": action,
@@ -176,7 +215,7 @@ async def agent_voice(
     params = routing.get("parameters", {})
 
     # Step 3: Execute the action
-    result, message = await _execute_action(action, params, access_token)
+    result, message = await _execute_action(action, params, access_token, user_id=user.id, db=db)
 
     return {
         "transcript": transcript,

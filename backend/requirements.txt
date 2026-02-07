@@ -10,10 +10,9 @@ sqlalchemy>=2.0
 asyncpg>=0.30
 alembic>=1.13
 greenlet>=3.0
+pgvector>=0.3
 
-# Redis & Jobs
-rq>=1.15
-rq-scheduler>=0.13
+# Redis (rate limiter)
 redis>=5.0
 
 # Google OAuth & APIs
@@ -25,8 +24,6 @@ google-api-python-client>=2.0
 cryptography>=41.0
 itsdangerous>=2.0
 
-# Stripe
-stripe>=8.0
 
 # LLM
 openrouter>=0.6

@@ -1,6 +1,6 @@
 const API_URL = 'http://localhost:8000'
 
-async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+const fetchAPI = async <T>(endpoint: string, options: RequestInit = {}): Promise<T> => {
   const response = await fetch(`${API_URL}${endpoint}`, {
     ...options,
     credentials: 'include',
@@ -18,104 +18,21 @@ async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise
   return response.json()
 }
 
-// Auth types
+export interface AuthUser {
+  id: string
+  email: string
+  name: string
+}
+
 export interface AuthStatusResponse {
   authenticated: boolean
-  user?: {
-    id: string
-    email: string
-    name: string
-  }
-  snapshot_status?: string
+  user?: AuthUser
 }
 
 export interface AuthStartResponse {
   auth_url: string
 }
 
-// Snapshot types
-export interface SnapshotStatusResponse {
-  status: string
-  stage?: string
-  progress?: {
-    emails_seen?: number
-    events_seen?: number
-    threads_seen?: number
-    artifacts_written?: number
-    preflight_emails?: number
-    preflight_events?: number
-    preflight_passed?: number
-  }
-  failure_reason?: string
-  created_at?: string
-  completed_at?: string
-  expires_at?: string
-}
-
-// Wrapped types
-export interface WrappedMetrics {
-  total_meetings: number
-  total_meeting_hours: number
-  avg_meetings_per_week: number
-  avg_meeting_hours_per_week: number
-  focus_hours_per_week: number
-  meeting_cost_estimate: number
-  total_emails: number
-  emails_per_week: number
-  meeting_heatmap: Record<string, number>
-  snapshot_window_days: number
-}
-
-export interface WrappedResponse {
-  status: string
-  metrics?: WrappedMetrics
-}
-
-// CRM types
-export interface TopEntity {
-  id: string
-  name: string
-  email?: string
-  domain?: string
-  score: number
-  meeting_count: number
-  email_count: number
-  total_meeting_minutes: number
-  contact_count?: number
-  story_available: boolean
-  story_locked: boolean
-}
-
-export interface TopEntitiesResponse {
-  status: string
-  entities: TopEntity[]
-}
-
-export interface StoryClaim {
-  text: string
-  evidence_ids: string[]
-}
-
-export interface StoryTimelineEntry {
-  date: string
-  description: string
-  evidence_ids: string[]
-}
-
-export interface StoryResponse {
-  status: string
-  entity_id?: string
-  entity_name?: string
-  title?: string
-  summary?: string
-  claims: StoryClaim[]
-  timeline: StoryTimelineEntry[]
-  themes: string[]
-  locked: boolean
-  error?: string
-}
-
-// Email types
 export interface CategorizedEmail {
   message_id: string
   thread_id: string
@@ -131,9 +48,22 @@ export interface CategorizedEmail {
   is_automated: boolean
 }
 
+export interface TLDRHighlight {
+  subject: string
+  from: string
+  gist: string
+  action_needed: boolean
+}
+
 export interface TLDRDigest {
   summary: string
-  highlights: { subject: string; from: string; gist: string; action_needed: boolean }[]
+  highlights: TLDRHighlight[]
+}
+
+export interface ReplySuggestion {
+  subject: string
+  body: string
+  tone: string
 }
 
 export interface Subscription {
@@ -154,91 +84,87 @@ export interface AgentResponse {
   routing_confidence?: number
 }
 
-export interface ReplySuggestion {
-  subject: string
-  body: string
-  tone: string
+export interface CalendarEventResponse {
+  created: boolean
+  event_id: string
+  html_link: string
 }
 
-// API functions
+export interface TodoResponse {
+  id: string
+  text: string
+  source: string | null
+  link: string | null
+  priority: number
+  completed: boolean
+}
+
 export const api = {
-  async getAuthStatus(): Promise<AuthStatusResponse> {
+  getAuthStatus: async (): Promise<AuthStatusResponse> => {
     return fetchAPI<AuthStatusResponse>('/auth/status')
   },
 
-  async startGoogleAuth(): Promise<AuthStartResponse> {
+  startGoogleAuth: async (): Promise<AuthStartResponse> => {
     return fetchAPI<AuthStartResponse>('/auth/google/start', { method: 'POST' })
   },
 
-  async logout(): Promise<{ success: boolean }> {
+  logout: async (): Promise<{ success: boolean }> => {
     return fetchAPI<{ success: boolean }>('/auth/logout', { method: 'POST' })
   },
 
-  async getSnapshotStatus(): Promise<SnapshotStatusResponse> {
-    return fetchAPI<SnapshotStatusResponse>('/snapshot/status')
-  },
-
-  async getWrapped(): Promise<WrappedResponse> {
-    return fetchAPI<WrappedResponse>('/wrapped')
-  },
-
-  async getTopEntities(): Promise<TopEntitiesResponse> {
-    return fetchAPI<TopEntitiesResponse>('/crm/top')
-  },
-
-  async getTopOrganizations(): Promise<TopEntitiesResponse> {
-    return fetchAPI<TopEntitiesResponse>('/crm/top-orgs')
-  },
-
-  async getStory(entityId: string): Promise<StoryResponse> {
-    return fetchAPI<StoryResponse>(`/crm/story/${entityId}`)
-  },
-
-  // Email endpoints
-  async getRecentEmails(limit = 20): Promise<{ emails: CategorizedEmail[] }> {
+  getRecentEmails: async (limit = 20): Promise<{ emails: CategorizedEmail[] }> => {
     return fetchAPI<{ emails: CategorizedEmail[] }>(`/emails/recent?limit=${limit}`)
   },
 
-  async getTLDR(): Promise<TLDRDigest> {
+  getTLDR: async (): Promise<TLDRDigest> => {
     return fetchAPI<TLDRDigest>('/emails/tldr')
   },
 
-  async generateReply(messageId: string): Promise<{ generated: boolean; suggestion: ReplySuggestion }> {
+  generateReply: async (messageId: string): Promise<{ generated: boolean; suggestion: ReplySuggestion }> => {
     return fetchAPI('/emails/reply', {
       method: 'POST',
       body: JSON.stringify({ message_id: messageId, generate: true, to: '', subject: '' })
     })
   },
 
-  async sendReply(data: { message_id: string; thread_id?: string; to: string; subject: string; body: string }): Promise<{ sent: boolean; message_id: string }> {
+  sendReply: async (data: {
+    message_id: string
+    thread_id?: string
+    to: string
+    subject: string
+    body: string
+  }): Promise<{ sent: boolean; message_id: string }> => {
     return fetchAPI('/emails/reply', {
       method: 'POST',
       body: JSON.stringify(data)
     })
   },
 
-  // Subscription endpoints
-  async getSubscriptions(): Promise<{ subscriptions: Subscription[] }> {
+  getSubscriptions: async (): Promise<{ subscriptions: Subscription[] }> => {
     return fetchAPI<{ subscriptions: Subscription[] }>('/subscriptions/')
   },
 
-  // Calendar endpoints
-  async createCalendarEvent(data: { summary: string; start: string; end: string; description?: string; location?: string }): Promise<{ created: boolean; event_id: string; html_link: string }> {
+  createCalendarEvent: async (data: {
+    summary: string
+    start: string
+    end: string
+    description?: string
+    location?: string
+  }): Promise<CalendarEventResponse> => {
     return fetchAPI('/calendar/event', {
       method: 'POST',
       body: JSON.stringify(data)
     })
   },
 
-  // Agent endpoints
-  async sendAgentCommand(command: string): Promise<AgentResponse> {
+  sendAgentCommand: async (command: string): Promise<AgentResponse> => {
     return fetchAPI<AgentResponse>('/agent/command', {
       method: 'POST',
       body: JSON.stringify({ command })
     })
   },
 
-  async sendVoiceCommand(audioBlob: Blob): Promise<AgentResponse> {
+  sendVoiceCommand: async (audioBlob: Blob): Promise<AgentResponse> => {
     const formData = new FormData()
     formData.append('file', audioBlob, 'recording.wav')
     const response = await fetch(`${API_URL}/agent/voice`, {
@@ -251,5 +177,28 @@ export const api = {
       throw new Error(error.detail || `HTTP ${response.status}`)
     }
     return response.json()
+  },
+
+  getTodos: async (): Promise<TodoResponse[]> => {
+    return fetchAPI<TodoResponse[]>('/todos/')
+  },
+
+  generateTodos: async (): Promise<TodoResponse[]> => {
+    return fetchAPI<TodoResponse[]>('/todos/generate', { method: 'POST' })
+  },
+
+  updateTodo: async (todoId: string, data: { completed?: boolean; text?: string }): Promise<TodoResponse> => {
+    return fetchAPI<TodoResponse>(`/todos/${todoId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    })
+  },
+
+  deleteTodo: async (todoId: string): Promise<{ deleted: boolean }> => {
+    return fetchAPI<{ deleted: boolean }>(`/todos/${todoId}`, { method: 'DELETE' })
+  },
+
+  deleteAccount: async (): Promise<{ deleted: boolean }> => {
+    return fetchAPI<{ deleted: boolean }>('/v1/me', { method: 'DELETE' })
   }
 }

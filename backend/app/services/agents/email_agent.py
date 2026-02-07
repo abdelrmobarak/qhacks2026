@@ -186,6 +186,72 @@ Rules:
 - Deduplicate services (only list each service once with the latest info)"""
 
 
+# ---------------------------------------------------------------------------
+# Todo extraction from emails
+# ---------------------------------------------------------------------------
+
+TODOS_SYSTEM_PROMPT = """You are a task extraction assistant. Given a list of recent emails, extract actionable to-do items.
+
+Look for:
+- Direct requests or asks from people
+- Deadlines and due dates mentioned
+- Meeting follow-ups or action items
+- Bills to pay or forms to fill
+- RSVPs or confirmations needed
+- Tasks implied by the email context
+
+Output JSON:
+{
+  "todos": [
+    {
+      "text": "Clear, actionable task description",
+      "source": "From: sender - Subject: email subject",
+      "message_id": "the message_id of the source email",
+      "priority": 1-5,
+      "deadline": "YYYY-MM-DD or null"
+    }
+  ]
+}
+
+Rules:
+- Only include genuinely actionable items (not FYI or newsletters)
+- Write tasks as clear imperatives (e.g. "Reply to John about budget approval")
+- Sort by priority (1 = most urgent)
+- Limit to 15 most important tasks
+- If no actionable items exist, return an empty todos array"""
+
+
+def extract_todos(emails: list[dict]) -> dict:
+    """Extract actionable to-do items from emails."""
+    if not emails:
+        return {"todos": []}
+
+    email_summaries = []
+    for email_item in emails[:40]:
+        email_summaries.append({
+            "message_id": email_item.get("message_id", ""),
+            "subject": email_item.get("subject", ""),
+            "from": email_item.get("from_name") or email_item.get("from_email", ""),
+            "snippet": email_item.get("snippet", "")[:300],
+            "date": email_item.get("date", ""),
+            "body_preview": (email_item.get("body_preview", "") or "")[:500],
+        })
+
+    user_prompt = f"Extract actionable to-do items from these recent emails:\n{json.dumps(email_summaries, indent=2)}"
+
+    try:
+        result = call_llm_json(TODOS_SYSTEM_PROMPT, user_prompt, max_tokens=2000)
+        todos = result.get("todos", [])
+        for todo_item in todos:
+            message_id = todo_item.get("message_id")
+            if message_id:
+                todo_item["link"] = f"https://mail.google.com/mail/u/0/#inbox/{message_id}"
+        return {"todos": todos}
+    except Exception:
+        logger.exception("Todo extraction failed")
+        return {"todos": []}
+
+
 def detect_subscriptions(emails: list[dict]) -> list[dict]:
     """Detect subscriptions and billing from emails."""
     if not emails:

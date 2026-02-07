@@ -17,22 +17,6 @@ def _split_csv(value: str | None) -> list[str]:
         return []
     return [item.strip() for item in value.split(",") if item.strip()]
 
-def _get_int(name: str, default: int) -> int:
-    raw_value = os.getenv(name)
-    if raw_value is None or raw_value.strip() == "":
-        return default
-    try:
-        return int(raw_value)
-    except Exception:
-        return default
-
-
-def _get_bool(name: str, default: bool) -> bool:
-    raw_value = os.getenv(name)
-    if raw_value is None or raw_value.strip() == "":
-        return default
-    return raw_value.strip().lower() in {"1", "true", "yes", "y", "on"}
-
 
 @dataclass(frozen=True)
 class Settings:
@@ -42,9 +26,8 @@ class Settings:
     # Database
     database_url: str
 
-    # Redis
+    # Redis (used by rate limiter)
     redis_url: str
-    rq_queue_name: str
 
     # Secrets
     session_secret: str
@@ -67,31 +50,8 @@ class Settings:
     # Gradium (STT)
     gradium_api_key: str
 
-    story_verification_enabled: bool
-
-
-    # Stripe
-    stripe_secret_key: str
-    stripe_webhook_secret: str
-    stripe_price_id: str
-
     # Session settings
     session_max_age_seconds: int = field(default=60 * 60 * 24 * 7)  # 7 days
-
-    # Snapshot settings
-    snapshot_retention_days: int = field(default=60)
-    snapshot_window_days: int = field(default=90)
-
-    # Gmail/Calendar limits
-    max_gmail_messages_listed: int = field(default=20000)
-    max_gmail_messages_fetched: int = field(default=10000)
-    max_calendar_events: int = field(default=5000)
-
-    # Story/dossier performance caps (demo tuning)
-    max_entity_evidence_items: int = field(default=250)
-    max_thread_summaries: int = field(default=10)
-    max_meeting_summaries: int = field(default=10)
-    llm_parallelism: int = field(default=3)
 
 
 _CACHED_SETTINGS: Settings | None = None
@@ -141,7 +101,7 @@ def load_settings() -> Settings:
     cors_origins = _split_csv(
         os.getenv(
             "CORS_ORIGINS",
-            "http://localhost:3000,http://127.0.0.1:3000",
+            "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000",
         )
     )
 
@@ -162,7 +122,6 @@ def load_settings() -> Settings:
         ),
         # Redis
         redis_url=os.getenv("REDIS_URL", "redis://localhost:6379/0"),
-        rq_queue_name=os.getenv("RQ_QUEUE_NAME", "sandbox"),
         # Secrets
         session_secret=session_secret,
         oauth_state_secret=oauth_state_secret,
@@ -190,23 +149,6 @@ def load_settings() -> Settings:
         openai_api_key=os.getenv("OPENAI_API_KEY", ""),
         openrouter_api_key=os.getenv("OPENROUTER_API_KEY", ""),
         gradium_api_key=os.getenv("GRADIUM_API_KEY", ""),
-        story_verification_enabled=_get_bool("STORY_VERIFICATION_ENABLED", True),
-
-        # Stripe
-        stripe_secret_key=os.getenv("STRIPE_SECRET_KEY", ""),
-        stripe_webhook_secret=os.getenv("STRIPE_WEBHOOK_SECRET", ""),
-        stripe_price_id=os.getenv("STRIPE_PRICE_ID", ""),
-
-        # Gmail/Calendar limits (override via env for demo scaling)
-        max_gmail_messages_listed=_get_int("MAX_GMAIL_MESSAGES_LISTED", 20000),
-        max_gmail_messages_fetched=_get_int("MAX_GMAIL_MESSAGES_FETCHED", 10000),
-        max_calendar_events=_get_int("MAX_CALENDAR_EVENTS", 5000),
-
-        # Story/dossier performance caps
-        max_entity_evidence_items=_get_int("MAX_ENTITY_EVIDENCE_ITEMS", 250),
-        max_thread_summaries=_get_int("MAX_THREAD_SUMMARIES", 10),
-        max_meeting_summaries=_get_int("MAX_MEETING_SUMMARIES", 10),
-        llm_parallelism=_get_int("LLM_PARALLELISM", 3),
     )
 
     _CACHED_SETTINGS = settings
