@@ -10,6 +10,7 @@ import Todos from './pages/Todos'
 import Agent from './pages/Agent'
 import Network from './pages/network'
 import Reports from './pages/reports'
+import Voice from './pages/voice'
 import Settings from './pages/settings'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Toaster } from '@/components/ui/sonner'
@@ -59,6 +60,7 @@ const App = () => {
               <Route path="/agent" element={<Agent />} />
               <Route path="/network" element={<Network />} />
               <Route path="/reports" element={<Reports />} />
+              <Route path="/voice" element={<Voice />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>

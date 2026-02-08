@@ -4,6 +4,7 @@ import {
   CreditCard,
   CheckSquare,
   Robot,
+  Microphone,
   Notebook,
   ShareNetwork,
   House,
@@ -56,6 +57,7 @@ const mainNavItems: NavItem[] = [
   { label: 'To-Do', path: '/todos', icon: <CheckSquare weight="duotone" /> },
   { label: 'Network', path: '/network', icon: <ShareNetwork weight="duotone" /> },
   { label: 'Chat', path: '/agent', icon: <Robot weight="duotone" /> },
+  { label: 'Voice', path: '/voice', icon: <Microphone weight="duotone" /> },
   { label: 'Daily Report', path: '/reports', icon: <Notebook weight="duotone" /> },
 ]
 

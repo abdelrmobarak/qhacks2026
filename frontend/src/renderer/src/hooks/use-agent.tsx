@@ -26,6 +26,63 @@ interface AgentProviderProps {
   children: React.ReactNode
 }
 
+const OGG_OPUS_MIME = 'audio/ogg;codecs=opus'
+const SUPPORTS_OGG_RECORDING = typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(OGG_OPUS_MIME)
+const TARGET_SAMPLE_RATE = 24000
+
+const resampleChannel = (channelData: Float32Array, inputRate: number, outputRate: number): Float32Array => {
+  if (inputRate === outputRate) return channelData
+  const ratio = inputRate / outputRate
+  const outputLength = Math.round(channelData.length / ratio)
+  const output = new Float32Array(outputLength)
+  for (let outputIndex = 0; outputIndex < outputLength; outputIndex++) {
+    const inputIndex = outputIndex * ratio
+    const low = Math.floor(inputIndex)
+    const high = Math.min(low + 1, channelData.length - 1)
+    const fraction = inputIndex - low
+    output[outputIndex] = channelData[low] * (1 - fraction) + channelData[high] * fraction
+  }
+  return output
+}
+
+const encodeWav = (audioBuffer: AudioBuffer): Blob => {
+  const rawChannel = audioBuffer.getChannelData(0)
+  const samples = resampleChannel(rawChannel, audioBuffer.sampleRate, TARGET_SAMPLE_RATE)
+  const bytesPerSample = 2
+  const dataLength = samples.length * bytesPerSample
+  const buffer = new ArrayBuffer(44 + dataLength)
+  const view = new DataView(buffer)
+
+  const writeString = (byteOffset: number, value: string): void => {
+    for (let charIndex = 0; charIndex < value.length; charIndex++) {
+      view.setUint8(byteOffset + charIndex, value.charCodeAt(charIndex))
+    }
+  }
+
+  writeString(0, 'RIFF')
+  view.setUint32(4, 36 + dataLength, true)
+  writeString(8, 'WAVE')
+  writeString(12, 'fmt ')
+  view.setUint32(16, 16, true)
+  view.setUint16(20, 1, true)
+  view.setUint16(22, 1, true)
+  view.setUint32(24, TARGET_SAMPLE_RATE, true)
+  view.setUint32(28, TARGET_SAMPLE_RATE * bytesPerSample, true)
+  view.setUint16(32, bytesPerSample, true)
+  view.setUint16(34, 16, true)
+  writeString(36, 'data')
+  view.setUint32(40, dataLength, true)
+
+  let writeOffset = 44
+  for (let sampleIndex = 0; sampleIndex < samples.length; sampleIndex++) {
+    const clampedSample = Math.max(-1, Math.min(1, samples[sampleIndex]))
+    view.setInt16(writeOffset, clampedSample < 0 ? clampedSample * 0x8000 : clampedSample * 0x7fff, true)
+    writeOffset += 2
+  }
+
+  return new Blob([buffer], { type: 'audio/wav' })
+}
+
 const AgentContext = createContext<AgentContextState | null>(null)
 
 export const AgentProvider = ({ children }: AgentProviderProps) => {
@@ -85,8 +142,20 @@ export const AgentProvider = ({ children }: AgentProviderProps) => {
 
   const startRecording = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mediaRecorder = new MediaRecorder(stream)
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          sampleRate: 24000,
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      })
+      const recorderOptions: MediaRecorderOptions = { audioBitsPerSecond: 128000 }
+      if (MediaRecorder.isTypeSupported(OGG_OPUS_MIME)) {
+        recorderOptions.mimeType = OGG_OPUS_MIME
+      }
+      const mediaRecorder = new MediaRecorder(stream, recorderOptions)
       mediaRecorderRef.current = mediaRecorder
       chunksRef.current = []
 
@@ -97,10 +166,10 @@ export const AgentProvider = ({ children }: AgentProviderProps) => {
       }
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(chunksRef.current, { type: 'audio/wav' })
+        const rawBlob = new Blob(chunksRef.current, { type: mediaRecorder.mimeType })
         stream.getTracks().forEach((track) => track.stop())
 
-        addTurn({ role: 'user', content: '(voice command)' })
+        addTurn({ role: 'user', content: 'Transcribing...' })
 
         const pendingId = addTurn({
           role: 'assistant',
@@ -110,6 +179,17 @@ export const AgentProvider = ({ children }: AgentProviderProps) => {
         setIsProcessing(true)
 
         try {
+          let audioBlob: Blob
+          if (SUPPORTS_OGG_RECORDING) {
+            audioBlob = rawBlob
+          } else {
+            const audioContext = new AudioContext()
+            const arrayBuffer = await rawBlob.arrayBuffer()
+            const decodedAudio = await audioContext.decodeAudioData(arrayBuffer)
+            audioBlob = encodeWav(decodedAudio)
+            await audioContext.close()
+          }
+
           const response: VoiceChatResponse = await api.sendVoiceChatCommand(audioBlob)
 
           if (response.transcript) {
@@ -118,7 +198,7 @@ export const AgentProvider = ({ children }: AgentProviderProps) => {
                 const isLastUserTurn =
                   turn.role === 'user' &&
                   turn.id !== pendingId &&
-                  turn.content === '(voice command)'
+                  turn.content === 'Transcribing...'
                 return isLastUserTurn
                   ? { ...turn, content: response.transcript }
                   : turn
@@ -131,14 +211,29 @@ export const AgentProvider = ({ children }: AgentProviderProps) => {
           })
 
           if (response.audio_base64) {
-            const audioBytes = Uint8Array.from(atob(response.audio_base64), (character) =>
-              character.charCodeAt(0)
-            )
-            const playbackBlob = new Blob([audioBytes], { type: `audio/${response.audio_format}` })
-            const audioUrl = URL.createObjectURL(playbackBlob)
-            const audio = new Audio(audioUrl)
-            audio.addEventListener('ended', () => URL.revokeObjectURL(audioUrl))
-            audio.play()
+            try {
+              const audioBytes = Uint8Array.from(atob(response.audio_base64), (character) =>
+                character.charCodeAt(0)
+              )
+              const playbackContext = new AudioContext()
+              const audioBuffer = await playbackContext.decodeAudioData(audioBytes.buffer)
+              const source = playbackContext.createBufferSource()
+              source.buffer = audioBuffer
+              source.connect(playbackContext.destination)
+
+              const finishPlayback = () => {
+                clearTimeout(fallbackTimer)
+                playbackContext.close()
+              }
+
+              source.onended = finishPlayback
+              source.start()
+
+              // HACK: AudioBufferSourceNode.onended doesn't fire reliably in Electron
+              const fallbackTimer = setTimeout(finishPlayback, audioBuffer.duration * 1000 + 500)
+            } catch {
+              // playback failed silently
+            }
           }
         } catch (voiceError) {
           replacePendingTurn(pendingId, {

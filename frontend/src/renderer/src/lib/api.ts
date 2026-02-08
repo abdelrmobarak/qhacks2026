@@ -286,8 +286,9 @@ export const api = {
   },
 
   sendVoiceChatCommand: async (audioBlob: Blob): Promise<VoiceChatResponse> => {
+    const filename = audioBlob.type.includes('ogg') ? 'recording.ogg' : 'recording.wav'
     const formData = new FormData()
-    formData.append('file', audioBlob, 'recording.wav')
+    formData.append('file', audioBlob, filename)
     const response = await fetch(`${API_URL}/agent/voice-chat`, {
       method: 'POST',
       credentials: 'include',

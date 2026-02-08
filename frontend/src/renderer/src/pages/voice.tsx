@@ -62,15 +62,14 @@ const encodeWav = (audioBuffer: AudioBuffer): Blob => {
   return new Blob([buffer], { type: 'audio/wav' })
 }
 
-const PROCESSING_PHRASES = [
+const PROCESSING_STEPS = [
   'Encoding...',
   'Transcribing...',
   'Thinking...',
   'Pondering...',
-  'Speaking...',
 ]
 
-const PHRASE_INTERVAL_MILLISECONDS = 2000
+const STEP_REVEAL_MILLISECONDS = 2000
 
 type VoiceState = 'idle' | 'recording' | 'processing' | 'playing'
 
@@ -156,12 +155,19 @@ const Voice = () => {
               const source = playbackContext.createBufferSource()
               source.buffer = audioBuffer
               source.connect(playbackContext.destination)
-              source.onended = () => {
+
+              const finishPlayback = () => {
+                clearTimeout(fallbackTimer)
                 playbackContext.close()
                 playbackContextRef.current = null
                 setVoiceState('idle')
               }
+
+              source.onended = finishPlayback
               source.start()
+
+              // HACK: AudioBufferSourceNode.onended doesn't fire reliably in Electron
+              const fallbackTimer = setTimeout(finishPlayback, audioBuffer.duration * 1000 + 500)
             } catch {
               setVoiceState('idle')
             }
@@ -201,16 +207,16 @@ const Voice = () => {
   const isPlaying = voiceState === 'playing'
   const isBusy = isProcessing || isPlaying
 
-  const [phraseIndex, setPhraseIndex] = useState(0)
+  const [stepIndex, setStepIndex] = useState(0)
 
   useEffect(() => {
     if (!isProcessing) {
-      setPhraseIndex(0)
+      setStepIndex(0)
       return
     }
     const intervalId = setInterval(() => {
-      setPhraseIndex((previous) => (previous + 1) % PROCESSING_PHRASES.length)
-    }, PHRASE_INTERVAL_MILLISECONDS)
+      setStepIndex((previous) => (previous + 1) % PROCESSING_STEPS.length)
+    }, STEP_REVEAL_MILLISECONDS)
     return () => clearInterval(intervalId)
   }, [isProcessing])
 
@@ -255,7 +261,7 @@ const Voice = () => {
             >
               <CircleNotch className="size-8 text-primary animate-spin" />
               <span className="text-xs text-muted-foreground">
-                {PROCESSING_PHRASES[phraseIndex]}
+                {PROCESSING_STEPS[stepIndex]}
               </span>
             </motion.div>
           )}
