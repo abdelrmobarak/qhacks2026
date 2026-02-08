@@ -72,7 +72,7 @@ async def generate_todos(
     db: Annotated[AsyncSession, Depends(get_db)],
     user: Annotated[User, Depends(require_current_user)],
 ) -> list[TodoResponse]:
-    """Generate todos from emails via LLM and persist them. Replaces only non-completed todos."""
+    """Generate todos from emails via LLM, appending only new non-duplicate tasks."""
     access_token = await get_valid_access_token(user, db)
 
     message_refs = await list_messages(
@@ -83,15 +83,16 @@ async def generate_todos(
     if not msg_ids:
         return []
 
+    existing_result = await db.execute(
+        select(Todo).where(Todo.user_id == user.id)
+    )
+    existing_todo_texts = [todo.text for todo in existing_result.scalars().all()]
+
     messages = await fetch_messages(access_token, msg_ids, include_body=True)
     email_dicts = [_format_gmail_message(m) for m in messages if not m.is_automated_sender]
-    todos_result = await asyncio.to_thread(extract_todos, email_dicts)
+    todos_result = await asyncio.to_thread(extract_todos, email_dicts, existing_todo_texts)
 
     raw_todos = todos_result.get("todos", [])
-
-    await db.execute(
-        sa_delete(Todo).where(Todo.user_id == user.id, Todo.completed == False)  # noqa: E712
-    )
 
     new_todos = []
     for raw_todo in raw_todos:

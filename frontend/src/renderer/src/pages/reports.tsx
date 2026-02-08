@@ -1,4 +1,3 @@
-import { useState, useCallback } from 'react'
 import {
   Notebook,
   ArrowClockwise,
@@ -23,7 +22,7 @@ import {
   EmptyDescription,
 } from '@/components/ui/empty'
 import { Spinner } from '@/components/ui/spinner'
-import { api, type DailyReport } from '../lib/api'
+import { useDataCache } from '../hooks/use-data-cache'
 
 const CATEGORY_LABELS: Record<string, string> = {
   needs_reply: 'Needs Reply',
@@ -41,24 +40,9 @@ const PRIORITY_VARIANT: Record<string, 'destructive' | 'default' | 'secondary'> 
 }
 
 const Reports = () => {
-  const [report, setReport] = useState<DailyReport | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { report, isReportLoading, reportError, refreshReport } = useDataCache()
 
-  const generateReport = useCallback(async () => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const data = await api.getDailyReport()
-      setReport(data)
-    } catch (generateError) {
-      setError(generateError instanceof Error ? generateError.message : 'Failed to generate report')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
-
-  if (isLoading) {
+  if (isReportLoading) {
     return (
       <div className="absolute inset-0 flex items-center justify-center">
         <Spinner className="size-6" />
@@ -66,7 +50,7 @@ const Reports = () => {
     )
   }
 
-  if (error) {
+  if (reportError) {
     return (
       <Empty className="py-16">
         <EmptyHeader>
@@ -74,9 +58,9 @@ const Reports = () => {
             <WarningCircle />
           </EmptyMedia>
           <EmptyTitle>Failed to generate report</EmptyTitle>
-          <EmptyDescription>{error}</EmptyDescription>
+          <EmptyDescription>{reportError}</EmptyDescription>
         </EmptyHeader>
-        <Button variant="outline" size="sm" onClick={generateReport}>
+        <Button variant="outline" size="sm" onClick={refreshReport}>
           Retry
         </Button>
       </Empty>
@@ -95,7 +79,7 @@ const Reports = () => {
             Generate an AI-powered summary of your day: email stats, highlights, action items, and upcoming deadlines.
           </EmptyDescription>
         </EmptyHeader>
-        <Button variant="outline" size="sm" onClick={generateReport} className="gap-1.5">
+        <Button variant="outline" size="sm" onClick={refreshReport} className="gap-1.5">
           <Lightning className="size-3" />
           Generate Today's Report
         </Button>
@@ -114,8 +98,8 @@ const Reports = () => {
         <span className="text-xs text-muted-foreground">
           {emailStats.total} emails analyzed
         </span>
-        <Button variant="ghost" size="icon-sm" onClick={generateReport} disabled={isLoading}>
-          {isLoading ? <CircleNotch className="animate-spin" /> : <ArrowClockwise />}
+        <Button variant="ghost" size="icon-sm" onClick={refreshReport} disabled={isReportLoading}>
+          {isReportLoading ? <CircleNotch className="animate-spin" /> : <ArrowClockwise />}
         </Button>
       </div>
 

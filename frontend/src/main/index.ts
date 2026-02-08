@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, session } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, session, Notification } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -105,6 +105,18 @@ app.whenReady().then(() => {
     } catch (err) {
       return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
     }
+  })
+
+  ipcMain.handle('notification:show', (_event, title: string, body: string) => {
+    if (!Notification.isSupported()) return
+    const notification = new Notification({ title, body })
+    notification.on('click', () => {
+      if (mainWindow) {
+        if (mainWindow.isMinimized()) mainWindow.restore()
+        mainWindow.focus()
+      }
+    })
+    notification.show()
   })
 
   // Open URLs in system browser (for Stripe checkout etc.)

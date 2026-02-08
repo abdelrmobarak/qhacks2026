@@ -19,48 +19,34 @@ import {
 } from '@/components/ui/empty'
 import { Spinner } from '@/components/ui/spinner'
 import { api, type TodoResponse } from '../lib/api'
+import { useDataCache } from '../hooks/use-data-cache'
 
 const Todos = () => {
-  const [todos, setTodos] = useState<TodoResponse[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const { todos: cachedTodos, isTodosLoading, todosError, refreshTodos } = useDataCache()
+  const [optimisticTodos, setOptimisticTodos] = useState<TodoResponse[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
-  const fetchTodos = useCallback(async () => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const response = await api.getTodos()
-      setTodos(response)
-    } catch (fetchError) {
-      setError(fetchError instanceof Error ? fetchError.message : 'Failed to load todos')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
+  useEffect(() => {
+    setOptimisticTodos(cachedTodos)
+  }, [cachedTodos])
 
   const generateTodos = useCallback(async () => {
     setIsGenerating(true)
-    setError(null)
     try {
-      const response = await api.generateTodos()
-      setTodos(response)
-    } catch (generateError) {
-      setError(generateError instanceof Error ? generateError.message : 'Failed to generate todos')
+      await api.generateTodos()
+      await refreshTodos()
+    } catch {
+      // silent fail
     } finally {
       setIsGenerating(false)
     }
-  }, [])
-
-  useEffect(() => {
-    fetchTodos()
-  }, [fetchTodos])
+  }, [refreshTodos])
 
   const toggleTodo = useCallback(async (todoId: string) => {
-    const targetTodo = todos.find((todo) => todo.id === todoId)
+    const targetTodo = optimisticTodos.find((todo) => todo.id === todoId)
     if (!targetTodo) return
 
-    setTodos((previous) =>
+    setOptimisticTodos((previous) =>
       previous.map((todo) =>
         todo.id === todoId ? { ...todo, completed: !todo.completed } : todo
       )
@@ -69,17 +55,17 @@ const Todos = () => {
     try {
       await api.updateTodo(todoId, { completed: !targetTodo.completed })
     } catch {
-      setTodos((previous) =>
+      setOptimisticTodos((previous) =>
         previous.map((todo) =>
           todo.id === todoId ? { ...todo, completed: targetTodo.completed } : todo
         )
       )
     }
-  }, [todos])
+  }, [optimisticTodos])
 
-  const completedCount = todos.filter((todo) => todo.completed).length
+  const completedCount = optimisticTodos.filter((todo) => todo.completed).length
 
-  if (isLoading) {
+  if (isTodosLoading) {
     return (
       <div className="absolute inset-0 flex items-center justify-center">
         <Spinner className="size-6" />
@@ -87,7 +73,7 @@ const Todos = () => {
     )
   }
 
-  if (error) {
+  if (todosError) {
     return (
       <Empty className="py-16">
         <EmptyHeader>
@@ -95,16 +81,16 @@ const Todos = () => {
             <WarningCircle />
           </EmptyMedia>
           <EmptyTitle>Failed to generate to-dos</EmptyTitle>
-          <EmptyDescription>{error}</EmptyDescription>
+          <EmptyDescription>{todosError}</EmptyDescription>
         </EmptyHeader>
-        <Button variant="outline" size="sm" onClick={fetchTodos}>
+        <Button variant="outline" size="sm" onClick={refreshTodos}>
           Retry
         </Button>
       </Empty>
     )
   }
 
-  if (todos.length === 0) {
+  if (optimisticTodos.length === 0) {
     return (
       <Empty className="py-16">
         <EmptyHeader>
@@ -133,7 +119,7 @@ const Todos = () => {
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-0.5">
           <span className="text-xs text-muted-foreground">
-            {completedCount} of {todos.length} completed
+            {completedCount} of {optimisticTodos.length} completed
           </span>
         </div>
         <Button variant="ghost" size="icon-sm" onClick={generateTodos} disabled={isGenerating}>
@@ -142,7 +128,7 @@ const Todos = () => {
       </div>
 
       <div className="flex flex-col gap-1">
-          {todos.map((todo) => (
+          {optimisticTodos.map((todo) => (
             <div
               key={todo.id}
             >

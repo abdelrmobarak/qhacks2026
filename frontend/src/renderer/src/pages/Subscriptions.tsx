@@ -1,4 +1,3 @@
-import { useState, useEffect, useCallback } from 'react'
 import { CreditCard, ArrowClockwise, WarningCircle } from '@phosphor-icons/react'
 
 import { Card, CardContent } from '@/components/ui/card'
@@ -13,31 +12,12 @@ import {
   EmptyDescription,
 } from '@/components/ui/empty'
 import { Spinner } from '@/components/ui/spinner'
-import { api, type Subscription } from '../lib/api'
+import { useDataCache } from '../hooks/use-data-cache'
 
 const Subscriptions = () => {
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { subscriptions, isSubscriptionsLoading, subscriptionsError, refreshSubscriptions } = useDataCache()
 
-  const loadSubscriptions = useCallback(async () => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const data = await api.getSubscriptions()
-      setSubscriptions(data.subscriptions)
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Failed to load subscriptions')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    loadSubscriptions()
-  }, [loadSubscriptions])
-
-  if (isLoading) {
+  if (isSubscriptionsLoading) {
     return (
       <div className="absolute inset-0 flex items-center justify-center">
         <Spinner className="size-6" />
@@ -45,7 +25,7 @@ const Subscriptions = () => {
     )
   }
 
-  if (error) {
+  if (subscriptionsError) {
     return (
       <Empty className="py-16">
         <EmptyHeader>
@@ -53,9 +33,9 @@ const Subscriptions = () => {
             <WarningCircle />
           </EmptyMedia>
           <EmptyTitle>Failed to load subscriptions</EmptyTitle>
-          <EmptyDescription>{error}</EmptyDescription>
+          <EmptyDescription>{subscriptionsError}</EmptyDescription>
         </EmptyHeader>
-        <Button variant="outline" size="sm" onClick={loadSubscriptions}>
+        <Button variant="outline" size="sm" onClick={refreshSubscriptions}>
           Retry
         </Button>
       </Empty>
@@ -74,7 +54,7 @@ const Subscriptions = () => {
             SaturdAI scans your email for billing and subscription receipts. None found in the last 90 days.
           </EmptyDescription>
         </EmptyHeader>
-        <Button variant="outline" size="sm" onClick={loadSubscriptions} className="gap-1.5">
+        <Button variant="outline" size="sm" onClick={refreshSubscriptions} className="gap-1.5">
           <ArrowClockwise className="size-3" />
           Rescan
         </Button>
@@ -103,7 +83,7 @@ const Subscriptions = () => {
             </span>
           )}
         </div>
-        <Button variant="ghost" size="icon-sm" onClick={loadSubscriptions}>
+        <Button variant="ghost" size="icon-sm" onClick={refreshSubscriptions}>
           <ArrowClockwise />
         </Button>
       </div>

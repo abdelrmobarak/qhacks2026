@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import {
   EnvelopeSimple,
   ArrowBendUpLeft,
@@ -22,6 +22,7 @@ import {
   EmptyDescription,
 } from '@/components/ui/empty'
 import { api, type CategorizedEmail, type ReplySuggestion } from '../lib/api'
+import { useDataCache } from '../hooks/use-data-cache'
 
 const CATEGORY_LABELS: Record<string, string> = {
   needs_reply: 'Needs Reply',
@@ -42,32 +43,13 @@ const CATEGORY_VARIANTS: Record<string, 'default' | 'secondary' | 'destructive' 
 const ALL_FILTER = 'all'
 
 const Inbox = () => {
-  const [emails, setEmails] = useState<CategorizedEmail[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { emails, isEmailsLoading, emailsError, refreshEmails } = useDataCache()
   const [selectedEmail, setSelectedEmail] = useState<CategorizedEmail | null>(null)
   const [filter, setFilter] = useState(ALL_FILTER)
   const [replySuggestion, setReplySuggestion] = useState<ReplySuggestion | null>(null)
   const [isGeneratingReply, setIsGeneratingReply] = useState(false)
   const [replyBody, setReplyBody] = useState('')
   const [isSending, setIsSending] = useState(false)
-
-  const loadEmails = useCallback(async () => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const data = await api.getRecentEmails(30)
-      setEmails(data.emails)
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Failed to load emails')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    loadEmails()
-  }, [loadEmails])
 
   const filteredEmails =
     filter === ALL_FILTER ? emails : emails.filter((email) => email.category === filter)
@@ -132,13 +114,13 @@ const Inbox = () => {
               {category === ALL_FILTER ? 'All' : CATEGORY_LABELS[category] ?? category}
             </Button>
           ))}
-          <Button variant="ghost" size="icon-xs" onClick={loadEmails} className="ml-auto">
+          <Button variant="ghost" size="icon-xs" onClick={refreshEmails} className="ml-auto">
             <ArrowClockwise />
           </Button>
         </div>
 
         <ScrollArea className="flex-1">
-          {isLoading ? (
+          {isEmailsLoading ? (
             <div className="flex flex-col gap-2">
               {Array.from({ length: 8 }).map((_, index) => (
                 <div key={index} className="flex flex-col gap-2 p-3 border border-border">
@@ -148,16 +130,16 @@ const Inbox = () => {
                 </div>
               ))}
             </div>
-          ) : error ? (
+          ) : emailsError ? (
             <Empty className="py-12">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
                   <EnvelopeSimple />
                 </EmptyMedia>
                 <EmptyTitle>Failed to load emails</EmptyTitle>
-                <EmptyDescription>{error}</EmptyDescription>
+                <EmptyDescription>{emailsError}</EmptyDescription>
               </EmptyHeader>
-              <Button variant="outline" size="sm" onClick={loadEmails}>
+              <Button variant="outline" size="sm" onClick={refreshEmails}>
                 Retry
               </Button>
             </Empty>
