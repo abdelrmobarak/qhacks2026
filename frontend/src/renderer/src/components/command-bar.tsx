@@ -1,26 +1,21 @@
 import { useState, useCallback } from 'react'
-import { PaperPlaneRight, CircleNotch } from '@phosphor-icons/react'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { api } from '../lib/api'
+import { useNavigate } from 'react-router-dom'
+import { CircleNotch } from '@phosphor-icons/react'
 
 const CommandBar = () => {
   const [command, setCommand] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
+  const navigate = useNavigate()
 
-  const handleSubmit = useCallback(async () => {
-    if (!command.trim() || isProcessing) return
+  const handleSubmit = useCallback(() => {
+    const trimmed = command.trim()
+    if (!trimmed || isProcessing) return
 
     setIsProcessing(true)
-    try {
-      await api.sendAgentCommand(command.trim())
-      setCommand('')
-    } catch {
-      // errors handled by pages that display results
-    } finally {
-      setIsProcessing(false)
-    }
-  }, [command, isProcessing])
+    setCommand('')
+    navigate(`/agent?q=${encodeURIComponent(trimmed)}`)
+    setIsProcessing(false)
+  }, [command, isProcessing, navigate])
 
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
@@ -33,30 +28,18 @@ const CommandBar = () => {
   )
 
   return (
-    <div className="flex items-center gap-1">
-      <div className="relative flex-1">
-        <Input
-          placeholder="Ask SaturdAI anything..."
-          value={command}
-          onChange={(event) => setCommand(event.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={isProcessing}
-          className="pr-8 text-xs"
-        />
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          className="absolute right-1 top-1/2 -translate-y-1/2"
-          onClick={handleSubmit}
-          disabled={!command.trim() || isProcessing}
-        >
-          {isProcessing ? (
-            <CircleNotch className="animate-spin" />
-          ) : (
-            <PaperPlaneRight />
-          )}
-        </Button>
-      </div>
+    <div className="relative flex items-center">
+      <input
+        placeholder="Ask SaturdAI anything..."
+        value={command}
+        onChange={(event) => setCommand(event.target.value)}
+        onKeyDown={handleKeyDown}
+        disabled={isProcessing}
+        className="h-7 w-full rounded-md bg-muted px-2.5 text-xs outline-none placeholder:text-muted-foreground disabled:pointer-events-none disabled:opacity-50"
+      />
+      {isProcessing && (
+        <CircleNotch className="absolute right-2 size-3 animate-spin text-muted-foreground" />
+      )}
     </div>
   )
 }

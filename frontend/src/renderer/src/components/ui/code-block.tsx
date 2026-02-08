@@ -26,7 +26,7 @@ interface InlineCodeProps {
 const InlineCode = ({ children, className }: InlineCodeProps) => (
   <code
     className={cn(
-      'bg-muted rounded-md px-1.5 py-0.5 text-sm font-mono',
+      'bg-muted rounded-md px-1 py-0.5 text-[0.9em] font-mono',
       className
     )}
   >

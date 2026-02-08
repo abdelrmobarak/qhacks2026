@@ -9,7 +9,6 @@ import {
 import { motion, AnimatePresence } from 'motion/react'
 
 import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   PromptInput,
   PromptInputTextarea,
@@ -17,13 +16,6 @@ import {
   PromptInputAction,
 } from '@/components/ui/prompt-input'
 import { PromptSuggestion } from '@/components/ui/prompt-suggestion'
-import {
-  ChainOfThought,
-  ChainOfThoughtStep,
-  ChainOfThoughtTrigger,
-  ChainOfThoughtContent,
-  ChainOfThoughtItem,
-} from '@/components/ui/chain-of-thought'
 import { TextShimmer } from '@/components/ui/text-shimmer'
 import { Markdown } from '@/components/ui/markdown'
 import { Logo } from '@/components/logo'
@@ -65,25 +57,19 @@ const ThinkingSteps = () => {
   }, [])
 
   return (
-    <div className="rounded-2xl bg-background py-2.5">
-      <ChainOfThought>
-        <AnimatePresence initial={false}>
-          {THINKING_STEPS.slice(0, visibleCount).map((step, stepIndex) => (
-            <motion.div
-              key={stepIndex}
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              transition={{ duration: 0.3, ease: 'easeOut' }}
-            >
-              <ChainOfThoughtStep>
-                <ChainOfThoughtTrigger swapIconOnHover={false}>
-                  <TextShimmer>{step.label}</TextShimmer>
-                </ChainOfThoughtTrigger>
-              </ChainOfThoughtStep>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </ChainOfThought>
+    <div className="flex flex-col gap-1 py-2.5">
+      <AnimatePresence initial={false}>
+        {THINKING_STEPS.slice(0, visibleCount).map((step, stepIndex) => (
+          <motion.div
+            key={stepIndex}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+          >
+            <TextShimmer className="text-xs">{step.label}</TextShimmer>
+          </motion.div>
+        ))}
+      </AnimatePresence>
     </div>
   )
 }
@@ -108,27 +94,14 @@ const AssistantMessage = ({ turn }: AssistantMessageProps) => {
 
   return (
     <div className="flex justify-start">
-      <div className="max-w-md">
+      <div className="w-full">
         {stepCount > 0 && (
-          <div className="mb-2 rounded-2xl bg-background py-2.5">
-            <ChainOfThought>
-              {turn.steps!.map((step, stepIndex) => (
-                <ChainOfThoughtStep key={stepIndex}>
-                  {step.detail ? (
-                    <>
-                      <ChainOfThoughtTrigger>{step.label}</ChainOfThoughtTrigger>
-                      <ChainOfThoughtContent>
-                        <ChainOfThoughtItem>{step.detail}</ChainOfThoughtItem>
-                      </ChainOfThoughtContent>
-                    </>
-                  ) : (
-                    <ChainOfThoughtTrigger swapIconOnHover={false}>
-                      {step.label}
-                    </ChainOfThoughtTrigger>
-                  )}
-                </ChainOfThoughtStep>
-              ))}
-            </ChainOfThought>
+          <div className="mb-2 flex flex-col gap-1 py-2.5">
+            {turn.steps!.map((step, stepIndex) => (
+              <span key={stepIndex} className="text-xs text-muted-foreground">
+                {step.label}
+              </span>
+            ))}
           </div>
         )}
 
@@ -192,8 +165,8 @@ const Agent = () => {
   const hasConversation = conversation.length > 0
 
   return (
-    <div className="flex flex-col h-full max-w-screen-md mx-auto">
-      <ScrollArea className="flex-1" ref={scrollRef}>
+    <div className="flex h-full flex-col max-w-screen-md mx-auto w-full">
+      <div className="flex-1 overflow-y-auto" ref={scrollRef}>
         {!hasConversation ? (
           <div className="flex flex-col items-center justify-center py-24 gap-4">
             <Logo className="size-14" />
@@ -206,7 +179,7 @@ const Agent = () => {
                 return (
                   <div key={turn.id} className="flex justify-end">
                     <div className="max-w-md rounded-2xl px-3.5 py-2.5 bg-primary text-primary-foreground">
-                      <p className="text-sm whitespace-pre-wrap leading-relaxed">{turn.content}</p>
+                      <p className="text-xs whitespace-pre-wrap leading-relaxed">{turn.content}</p>
                     </div>
                   </div>
                 )
@@ -215,7 +188,7 @@ const Agent = () => {
               if (turn.isPending) {
                 return (
                   <div key={turn.id} className="flex justify-start">
-                    <div className="max-w-md">
+                    <div className="w-full">
                       <ThinkingSteps />
                     </div>
                   </div>
@@ -226,9 +199,9 @@ const Agent = () => {
             })}
           </div>
         )}
-      </ScrollArea>
+      </div>
 
-      <div className="flex flex-col gap-3 pt-2">
+      <div className="flex flex-col gap-3 pt-2 pb-2">
         {!hasConversation && (
           <div className="flex flex-wrap gap-2 justify-center">
             {SUGGESTIONS.map((suggestion) => (

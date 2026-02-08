@@ -7,7 +7,6 @@ import {
   forceCollide,
 } from 'd3-force'
 import {
-  X,
   EnvelopeSimple,
   ChatCircle,
   Globe,
@@ -17,12 +16,16 @@ import {
   MagnifyingGlassPlusIcon,
   MagnifyingGlassMinusIcon,
 } from '@phosphor-icons/react'
-import { motion, AnimatePresence } from 'motion/react'
-
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Spinner } from '@/components/ui/spinner'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
 import {
   Empty,
   EmptyHeader,
@@ -443,16 +446,16 @@ const Network = () => {
       </svg>
 
       <div className="pointer-events-none absolute left-4 top-4 flex items-center gap-2">
-        <Badge variant="outline" className="pointer-events-auto">
+        <Badge variant="default" className="pointer-events-auto">
           {simulationNodes.length - 1} contacts
         </Badge>
-        <Badge variant="outline" className="pointer-events-auto">
+        <Badge variant="default" className="pointer-events-auto">
           {simulationLinks.filter(
             (simLink) => simLink.source.id !== 'you' && simLink.target.id !== 'you'
           ).length}{' '}
           connections
         </Badge>
-        <Badge variant="outline" className="pointer-events-auto">
+        <Badge variant="default" className="pointer-events-auto">
           {totalEmails} emails
         </Badge>
         <Button
@@ -483,113 +486,110 @@ const Network = () => {
         </Button>
       </div>
 
-      <AnimatePresence>
-        {selectedNode && selectedNode.type !== 'you' && (
-          <motion.div
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="pointer-events-auto absolute right-0 top-0 bottom-0 w-72 border-l bg-background p-4"
-          >
-            <div className="flex flex-col gap-4">
-              <div className="flex items-start justify-between">
-                <div className="flex flex-col gap-1">
-                  <span className="text-sm font-medium">{selectedNode.name}</span>
-                  <span className="text-xs text-muted-foreground">{selectedNode.email}</span>
-                </div>
-                <button
-                  className="text-muted-foreground hover:text-foreground"
-                  onClick={() => setSelectedNode(null)}
-                >
-                  <X className="size-4" />
-                </button>
-              </div>
+      <Sheet
+        open={!!selectedNode && selectedNode.type !== 'you'}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setSelectedNode(null)
+        }}
+      >
+        <SheetContent
+          side="right"
+          overlayClassName="top-10"
+          className="data-[side=right]:top-10 flex flex-col gap-4 sm:max-w-xs"
+        >
+          {selectedNode && selectedNode.type !== 'you' && (
+            <>
+              <SheetHeader>
+                <SheetTitle>{selectedNode.name}</SheetTitle>
+                <span className="text-xs text-muted-foreground">{selectedNode.email}</span>
+              </SheetHeader>
 
-              {selectedNode.description && (
-                <span className="text-xs text-muted-foreground">
-                  {selectedNode.description}
-                </span>
-              )}
-
-              {selectedNode.domain && (
-                <Badge variant="outline" className="w-fit">
-                  <Globe className="size-3" data-icon="inline-start" />
-                  {selectedNode.domain}
-                </Badge>
-              )}
-
-              <Separator />
-
-              <div className="grid grid-cols-2 gap-2">
-                <div className="flex flex-col gap-0.5 rounded-md border p-2">
-                  <div className="flex items-center gap-1.5 text-muted-foreground">
-                    <EnvelopeSimple className="size-3" />
-                    <span className="text-xs">Emails</span>
-                  </div>
-                  <span className="text-sm font-semibold tabular-nums">
-                    {selectedNode.email_count}
+              <div className="flex flex-col gap-4 px-4 pb-4">
+                {selectedNode.description && (
+                  <span className="text-xs text-muted-foreground">
+                    {selectedNode.description}
                   </span>
-                </div>
-                <div className="flex flex-col gap-0.5 rounded-md border p-2">
-                  <div className="flex items-center gap-1.5 text-muted-foreground">
-                    <ChatCircle className="size-3" />
-                    <span className="text-xs">Threads</span>
-                  </div>
-                  <span className="text-sm font-semibold tabular-nums">
-                    {selectedNode.thread_count}
-                  </span>
-                </div>
-              </div>
+                )}
 
-              <Separator />
+                {selectedNode.domain && (
+                  <Badge variant="outline" className="w-fit">
+                    <Globe className="size-3" data-icon="inline-start" />
+                    {selectedNode.domain}
+                  </Badge>
+                )}
 
-              <div className="flex flex-col gap-2">
-                <span className="text-xs font-medium">Connections</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {simulationLinks
-                    .filter(
-                      (simLink) =>
-                        simLink.source.id === selectedNode.id ||
-                        simLink.target.id === selectedNode.id
-                    )
-                    .filter(
-                      (simLink) =>
-                        simLink.source.id !== 'you' && simLink.target.id !== 'you'
-                    )
-                    .sort((linkA, linkB) => linkB.weight - linkA.weight)
-                    .slice(0, 8)
-                    .map((simLink) => {
-                      const connectedNode =
-                        simLink.source.id === selectedNode.id
-                          ? simLink.target
-                          : simLink.source
-                      return (
-                        <Badge key={connectedNode.id} variant="outline">
-                          {connectedNode.name}
-                          <span className="text-muted-foreground tabular-nums">
-                            {simLink.weight}
-                          </span>
-                        </Badge>
-                      )
-                    })}
-                  {simulationLinks.filter(
-                    (simLink) =>
-                      (simLink.source.id === selectedNode.id ||
-                        simLink.target.id === selectedNode.id) &&
-                      simLink.source.id !== 'you' &&
-                      simLink.target.id !== 'you'
-                  ).length === 0 && (
-                    <span className="text-xs text-muted-foreground">
-                      No shared threads with other contacts
+                <Separator />
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="flex flex-col gap-0.5 rounded-md border p-2">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <EnvelopeSimple className="size-3" />
+                      <span className="text-xs">Emails</span>
+                    </div>
+                    <span className="text-sm font-semibold tabular-nums">
+                      {selectedNode.email_count}
                     </span>
-                  )}
+                  </div>
+                  <div className="flex flex-col gap-0.5 rounded-md border p-2">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <ChatCircle className="size-3" />
+                      <span className="text-xs">Threads</span>
+                    </div>
+                    <span className="text-sm font-semibold tabular-nums">
+                      {selectedNode.thread_count}
+                    </span>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="flex flex-col gap-2">
+                  <span className="text-xs font-medium">Connections</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {simulationLinks
+                      .filter(
+                        (simLink) =>
+                          simLink.source.id === selectedNode.id ||
+                          simLink.target.id === selectedNode.id
+                      )
+                      .filter(
+                        (simLink) =>
+                          simLink.source.id !== 'you' && simLink.target.id !== 'you'
+                      )
+                      .sort((linkA, linkB) => linkB.weight - linkA.weight)
+                      .slice(0, 8)
+                      .map((simLink) => {
+                        const connectedNode =
+                          simLink.source.id === selectedNode.id
+                            ? simLink.target
+                            : simLink.source
+                        return (
+                          <Badge key={connectedNode.id} variant="outline">
+                            {connectedNode.name}
+                            <span className="text-muted-foreground tabular-nums">
+                              {simLink.weight}
+                            </span>
+                          </Badge>
+                        )
+                      })}
+                    {simulationLinks.filter(
+                      (simLink) =>
+                        (simLink.source.id === selectedNode.id ||
+                          simLink.target.id === selectedNode.id) &&
+                        simLink.source.id !== 'you' &&
+                        simLink.target.id !== 'you'
+                    ).length === 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        No shared threads with other contacts
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

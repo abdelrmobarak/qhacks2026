@@ -26,10 +26,14 @@ const AppLayout = ({
       >
         <SidebarTrigger style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties} />
         <div
-          className="mx-auto w-full max-w-md"
-          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+          className="absolute inset-0 flex items-center justify-center pointer-events-none"
         >
-          <CommandBar />
+          <div
+            className="w-full max-w-md pointer-events-auto"
+            style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+          >
+            <CommandBar />
+          </div>
         </div>
       </div>
       <AppSidebar

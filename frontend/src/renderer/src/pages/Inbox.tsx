@@ -17,6 +17,13 @@ import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Spinner } from '@/components/ui/spinner'
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet'
+import {
   Empty,
   EmptyHeader,
   EmptyMedia,
@@ -535,29 +542,29 @@ const Inbox = () => {
         </ScrollArea>
       </div>
 
-{approvalMode && generatedReplies.size > 0 && (
-        <div className="w-96 shrink-0 flex flex-col gap-4 border-l border-border pl-4">
-          <div className="flex items-center justify-between">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-sm font-semibold">Review Replies</span>
-              <span className="text-xs text-muted-foreground">
-                {Array.from(generatedReplies.values()).filter(r => r.status === 'sent').length} of {generatedReplies.size} sent
-              </span>
-            </div>
-            <Button
-              variant="ghost"
-              size="xs"
-              onClick={() => {
-                setApprovalMode(false)
-                setActiveReviewEmailId(null)
-              }}
-            >
-              Exit
-            </Button>
-          </div>
+      <Sheet
+        open={approvalMode && generatedReplies.size > 0}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setApprovalMode(false)
+            setActiveReviewEmailId(null)
+          }
+        }}
+      >
+        <SheetContent
+          side="right"
+          overlayClassName="top-10"
+          className="data-[side=right]:top-10 flex flex-col gap-4 sm:max-w-md"
+        >
+          <SheetHeader>
+            <SheetTitle>Review Replies</SheetTitle>
+            <SheetDescription>
+              {Array.from(generatedReplies.values()).filter((reply) => reply.status === 'sent').length} of {generatedReplies.size} sent
+            </SheetDescription>
+          </SheetHeader>
 
-          <ScrollArea className="flex-1 -mr-4 pr-4">
-            <div className="flex flex-col gap-2">
+          <ScrollArea className="flex-1">
+            <div className="flex flex-col gap-2 px-4">
               {Array.from(generatedReplies.entries()).map(([messageId, reply]) => {
                 const isActive = activeReviewEmailId === messageId
                 const isSent = reply.status === 'sent'
@@ -566,48 +573,48 @@ const Inbox = () => {
                 return (
                   <Card
                     key={messageId}
-                      className={`cursor-pointer transition-all ${
-                        isActive
-                          ? 'border-primary shadow-md'
-                          : isSent
-                          ? 'bg-muted/30 border-muted'
-                          : 'hover:border-muted-foreground/50'
-                      }`}
-                      onClick={() => setActiveReviewEmailId(messageId)}
-                    >
-                      <CardContent className="p-3 flex items-start gap-2">
-                        <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-                          <div className="flex items-start gap-2">
-                            <EnvelopeSimple className={`size-3.5 shrink-0 mt-0.5 ${isSent ? 'text-muted-foreground' : 'text-foreground'}`} />
-                            <span className={`text-xs font-medium line-clamp-2 flex-1 ${isSent ? 'text-muted-foreground line-through' : ''}`}>
-                              {reply.email.subject}
-                            </span>
-                          </div>
-                          <span className="text-xs text-muted-foreground truncate pl-5">
-                            {reply.email.from_email}
+                    className={`cursor-pointer transition-all ${
+                      isActive
+                        ? 'border-primary shadow-md'
+                        : isSent
+                        ? 'bg-muted/30 border-muted'
+                        : 'hover:border-muted-foreground/50'
+                    }`}
+                    onClick={() => setActiveReviewEmailId(messageId)}
+                  >
+                    <CardContent className="p-3 flex items-start gap-2">
+                      <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+                        <div className="flex items-start gap-2">
+                          <EnvelopeSimple className={`size-3.5 shrink-0 mt-0.5 ${isSent ? 'text-muted-foreground' : 'text-foreground'}`} />
+                          <span className={`text-xs font-medium line-clamp-2 flex-1 ${isSent ? 'text-muted-foreground line-through' : ''}`}>
+                            {reply.email.subject}
                           </span>
                         </div>
-                        <Badge
-                          variant={
-                            isSent
-                              ? 'default'
-                              : isFailed
-                              ? 'destructive'
-                              : 'secondary'
-                          }
-                          className="shrink-0"
-                        >
-                          {reply.status}
-                        </Badge>
-                      </CardContent>
-                    </Card>
+                        <span className="text-xs text-muted-foreground truncate pl-5">
+                          {reply.email.from_email}
+                        </span>
+                      </div>
+                      <Badge
+                        variant={
+                          isSent
+                            ? 'default'
+                            : isFailed
+                            ? 'destructive'
+                            : 'secondary'
+                        }
+                        className="shrink-0"
+                      >
+                        {reply.status}
+                      </Badge>
+                    </CardContent>
+                  </Card>
                 )
               })}
             </div>
           </ScrollArea>
 
           {activeReviewEmailId && generatedReplies.get(activeReviewEmailId) && (
-            <div className="border-t border-border pt-4">
+            <div className="border-t border-border pt-4 px-4 pb-4">
               <ReplyReviewPanel
                 reply={generatedReplies.get(activeReviewEmailId)!}
                 onEdit={(newBody) => handleEditReply(activeReviewEmailId, newBody)}
@@ -616,8 +623,8 @@ const Inbox = () => {
               />
             </div>
           )}
-        </div>
-      )}
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

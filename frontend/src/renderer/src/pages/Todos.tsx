@@ -158,7 +158,7 @@ const Todos = () => {
   }
 
   return (
-    <div className="flex flex-col max-w-screen-md mx-auto">
+    <div className="flex flex-col mx-auto">
       <div className="flex items-center justify-end pb-3">
         <Button variant="ghost" size="icon-sm" onClick={generateTodos} disabled={isGenerating}>
           {isGenerating ? <CircleNotch className="animate-spin" /> : <ArrowClockwise />}
@@ -214,7 +214,7 @@ const Todos = () => {
                     {todo.source && (
                       <TooltipProvider>
                         <Tooltip>
-                          <TooltipTrigger className="max-w-32 truncate text-xs text-muted-foreground shrink-0 cursor-default">
+                          <TooltipTrigger className="max-w-96 truncate text-xs text-muted-foreground shrink-0 cursor-default">
                             {todo.link ? (
                               <a
                                 href={todo.link}

@@ -70,7 +70,7 @@ const components: Components = {
 }
 
 const Markdown = ({ children, className }: MarkdownProps) => (
-  <div className={cn('text-sm', className)}>
+  <div className={cn('text-xs', className)}>
     <ReactMarkdown
       remarkPlugins={[remarkGfm, remarkBreaks]}
       components={components}

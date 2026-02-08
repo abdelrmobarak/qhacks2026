@@ -23,6 +23,7 @@ interface CachedDataState {
   refreshTodos: () => Promise<void>
   refreshDigest: () => Promise<void>
   refreshReport: () => Promise<void>
+  regenerateReport: () => Promise<void>
 }
 
 interface DataCacheProviderProps {
@@ -306,6 +307,20 @@ const DataCacheProvider = ({ children }: DataCacheProviderProps) => {
   const refreshDigest = useCallback(() => fetchDigest(false), [fetchDigest])
   const refreshReport = useCallback(() => fetchReport(), [fetchReport])
 
+  const regenerateReport = useCallback(async () => {
+    setIsReportLoading(true)
+    setReportError(null)
+    try {
+      const freshReport = await api.getDailyReport(true)
+      setReport(freshReport)
+      writeLocalCache(STORAGE_KEY_REPORT, freshReport)
+    } catch (fetchError) {
+      setReportError(fetchError instanceof Error ? fetchError.message : 'Failed to generate report')
+    } finally {
+      setIsReportLoading(false)
+    }
+  }, [])
+
   return (
     <DataCacheContext.Provider
       value={{
@@ -329,6 +344,7 @@ const DataCacheProvider = ({ children }: DataCacheProviderProps) => {
         refreshTodos,
         refreshDigest,
         refreshReport,
+        regenerateReport,
       }}
     >
       {children}
