@@ -21,7 +21,7 @@ const AppLayout = ({
   return (
     <SidebarProvider>
       <div
-        className="fixed top-0 left-0 right-0 z-20 flex h-10 items-center border-b pl-20"
+        className="fixed top-0 left-0 right-0 z-20 flex h-10 items-center border-b bg-background pl-20"
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       >
         <SidebarTrigger style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties} />

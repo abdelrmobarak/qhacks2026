@@ -116,6 +116,15 @@
     --radius-4xl: calc(var(--radius) + 16px);
 }
 
+@keyframes shimmer {
+  0% { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+
+@theme inline {
+  --animate-shimmer: shimmer 4s infinite linear;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

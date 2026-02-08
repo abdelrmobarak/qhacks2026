@@ -3,7 +3,6 @@ import {
   Tray,
   CreditCard,
   CheckSquare,
-  CalendarBlank,
   Robot,
   Notebook,
   ShareNetwork,
@@ -55,9 +54,8 @@ const mainNavItems: NavItem[] = [
   { label: 'Inbox', path: '/inbox', icon: <Tray weight="duotone" /> },
   { label: 'Subscriptions', path: '/subscriptions', icon: <CreditCard weight="duotone" /> },
   { label: 'To-Do', path: '/todos', icon: <CheckSquare weight="duotone" /> },
-  { label: 'Calendar', path: '/calendar', icon: <CalendarBlank weight="duotone" /> },
   { label: 'Network', path: '/network', icon: <ShareNetwork weight="duotone" /> },
-  { label: 'Deep Research', path: '/agent', icon: <Robot weight="duotone" /> },
+  { label: 'Chat', path: '/agent', icon: <Robot weight="duotone" /> },
   { label: 'Daily Report', path: '/reports', icon: <Notebook weight="duotone" /> },
 ]
 

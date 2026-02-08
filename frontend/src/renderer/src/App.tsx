@@ -7,7 +7,6 @@ import Dashboard from './pages/Dashboard'
 import Inbox from './pages/Inbox'
 import Subscriptions from './pages/Subscriptions'
 import Todos from './pages/Todos'
-import Calendar from './pages/Calendar'
 import Agent from './pages/Agent'
 import Network from './pages/network'
 import Reports from './pages/reports'
@@ -52,7 +51,6 @@ const App = () => {
           <Route path="/inbox" element={<Inbox />} />
           <Route path="/subscriptions" element={<Subscriptions />} />
           <Route path="/todos" element={<Todos />} />
-          <Route path="/calendar" element={<Calendar />} />
           <Route path="/agent" element={<Agent />} />
           <Route path="/network" element={<Network />} />
           <Route path="/reports" element={<Reports />} />

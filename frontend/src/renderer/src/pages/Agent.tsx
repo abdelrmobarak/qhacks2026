@@ -22,7 +22,9 @@ import {
   ChainOfThoughtStep,
   ChainOfThoughtTrigger,
   ChainOfThoughtContent,
+  ChainOfThoughtItem,
 } from '@/components/ui/chain-of-thought'
+import { TextShimmer } from '@/components/ui/text-shimmer'
 import { Markdown } from '@/components/ui/markdown'
 import { Logo } from '@/components/logo'
 import { api, type AgentResponse, type AgentStep, type AgentSource } from '../lib/api'
@@ -72,19 +74,19 @@ const ThinkingSteps = () => {
   }, [])
 
   return (
-    <div className="rounded-2xl bg-muted px-3.5 py-2.5">
+    <div className="rounded-2xl bg-background py-2.5">
       <ChainOfThought>
-        <AnimatePresence>
+        <AnimatePresence initial={false}>
           {THINKING_STEPS.slice(0, visibleCount).map((step, stepIndex) => (
             <motion.div
               key={stepIndex}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
             >
               <ChainOfThoughtStep>
                 <ChainOfThoughtTrigger swapIconOnHover={false}>
-                  {step.label}
+                  <TextShimmer>{step.label}</TextShimmer>
                 </ChainOfThoughtTrigger>
               </ChainOfThoughtStep>
             </motion.div>
@@ -100,118 +102,63 @@ interface AssistantMessageProps {
 }
 
 const AssistantMessage = ({ turn }: AssistantMessageProps) => {
-  const [visibleSteps, setVisibleSteps] = useState(0)
-  const [showMessage, setShowMessage] = useState(false)
-  const hasAnimated = useRef(false)
   const stepCount = turn.steps?.length ?? 0
   const hasSources = turn.sources && turn.sources.length > 0
-
-  useEffect(() => {
-    if (hasAnimated.current) return
-    hasAnimated.current = true
-
-    if (stepCount === 0) {
-      setShowMessage(true)
-      return
-    }
-
-    const timers: ReturnType<typeof setTimeout>[] = []
-
-    for (let index = 0; index < stepCount; index++) {
-      timers.push(
-        setTimeout(() => {
-          setVisibleSteps(index + 1)
-        }, 300 * (index + 1))
-      )
-    }
-
-    timers.push(
-      setTimeout(() => {
-        setShowMessage(true)
-      }, 300 * stepCount + 200)
-    )
-
-    return () => {
-      timers.forEach(clearTimeout)
-    }
-  }, [stepCount])
 
   return (
     <div className="flex justify-start">
       <div className="max-w-md">
         {stepCount > 0 && (
-          <div className="mb-2 rounded-2xl bg-muted px-3.5 py-2.5">
+          <div className="mb-2 rounded-2xl bg-background py-2.5">
             <ChainOfThought>
-              <AnimatePresence>
-                {turn.steps!.slice(0, visibleSteps).map((step, stepIndex) => (
-                  <motion.div
-                    key={stepIndex}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2, ease: 'easeOut' }}
-                  >
-                    <ChainOfThoughtStep>
-                      {step.detail ? (
-                        <>
-                          <ChainOfThoughtTrigger>{step.label}</ChainOfThoughtTrigger>
-                          <ChainOfThoughtContent>
-                            <p className="text-xs text-muted-foreground">{step.detail}</p>
-                          </ChainOfThoughtContent>
-                        </>
-                      ) : (
-                        <ChainOfThoughtTrigger swapIconOnHover={false}>
-                          {step.label}
-                        </ChainOfThoughtTrigger>
-                      )}
-                    </ChainOfThoughtStep>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
+              {turn.steps!.map((step, stepIndex) => (
+                <ChainOfThoughtStep key={stepIndex}>
+                  {step.detail ? (
+                    <>
+                      <ChainOfThoughtTrigger>{step.label}</ChainOfThoughtTrigger>
+                      <ChainOfThoughtContent>
+                        <ChainOfThoughtItem>{step.detail}</ChainOfThoughtItem>
+                      </ChainOfThoughtContent>
+                    </>
+                  ) : (
+                    <ChainOfThoughtTrigger swapIconOnHover={false}>
+                      {step.label}
+                    </ChainOfThoughtTrigger>
+                  )}
+                </ChainOfThoughtStep>
+              ))}
             </ChainOfThought>
           </div>
         )}
 
-        <AnimatePresence>
-          {showMessage && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.25, ease: 'easeOut' }}
-            >
-              <div className="rounded-2xl py-2.5">
-                <Markdown>{turn.content}</Markdown>
-              </div>
+        <div className="rounded-2xl py-2.5">
+          <Markdown>{turn.content}</Markdown>
+        </div>
 
-              {hasSources && (
-                <div className="flex flex-col gap-1.5 mt-2 pl-1">
-                  {turn.sources!.map((source, sourceIndex) => (
-                    <motion.a
-                      key={sourceIndex}
-                      href={source.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group flex items-start gap-2 rounded-lg border border-transparent px-2.5 py-2 transition-colors hover:bg-muted hover:border-border"
-                      initial={{ opacity: 0, x: -4 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.2, delay: sourceIndex * 0.08 }}
-                    >
-                      <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md bg-muted text-xs font-medium text-muted-foreground">
-                        {sourceIndex + 1}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1">
-                          <span className="truncate text-sm font-medium">{source.title}</span>
-                          <ArrowSquareOut className="size-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-                        </div>
-                        <p className="truncate text-xs text-muted-foreground">{source.description}</p>
-                      </div>
-                    </motion.a>
-                  ))}
+        {hasSources && (
+          <div className="flex flex-col gap-1.5 mt-2 pl-1">
+            {turn.sources!.map((source, sourceIndex) => (
+              <a
+                key={sourceIndex}
+                href={source.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-start gap-2 rounded-lg border border-transparent px-2.5 py-2 transition-colors hover:bg-muted hover:border-border"
+              >
+                <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md bg-muted text-xs font-medium text-muted-foreground">
+                  {sourceIndex + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1">
+                    <span className="truncate text-sm font-medium">{source.title}</span>
+                    <ArrowSquareOut className="size-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                  </div>
+                  <p className="truncate text-xs text-muted-foreground">{source.description}</p>
                 </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+              </a>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

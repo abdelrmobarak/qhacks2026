@@ -6,7 +6,6 @@ import {
   FunnelSimple,
   ArrowClockwise,
 } from '@phosphor-icons/react'
-import { motion } from 'motion/react'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -71,12 +70,7 @@ const ReplyReviewPanel = ({ reply, onEdit, onSend, onSkip }: ReplyReviewPanelPro
   const hasFailed = reply.status === 'failed'
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="flex flex-col gap-4"
-    >
+    <div className="flex flex-col gap-4">
       <Card className="bg-muted/30 border-muted">
         <CardContent className="p-5">
           <div className="flex flex-col gap-3">
@@ -115,10 +109,7 @@ const ReplyReviewPanel = ({ reply, onEdit, onSend, onSkip }: ReplyReviewPanelPro
         </div>
 
         {hasFailed ? (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-          >
+          <div>
             <Card className="border-destructive bg-destructive/5">
               <CardContent className="p-4">
                 <div className="flex items-start gap-2 text-destructive">
@@ -127,7 +118,7 @@ const ReplyReviewPanel = ({ reply, onEdit, onSend, onSkip }: ReplyReviewPanelPro
                 </div>
               </CardContent>
             </Card>
-          </motion.div>
+          </div>
         ) : (
           <>
             <Card className="shadow-sm">
@@ -174,7 +165,7 @@ const ReplyReviewPanel = ({ reply, onEdit, onSend, onSkip }: ReplyReviewPanelPro
           </>
         )}
       </div>
-    </motion.div>
+    </div>
   )
 }
 
@@ -189,7 +180,6 @@ const Inbox = () => {
   const [bulkGenerationProgress, setBulkGenerationProgress] = useState<BulkGenerationProgress | null>(null)
   const [activeReviewEmailId, setActiveReviewEmailId] = useState<string | null>(null)
   const [approvalMode, setApprovalMode] = useState(false)
-
   const loadEmails = useCallback(async () => {
     setIsLoading(true)
     setError(null)
@@ -207,14 +197,6 @@ const Inbox = () => {
     loadEmails()
   }, [loadEmails])
 
-  useEffect(() => {
-    if (emails.length > 0 && filter === ALL_FILTER) {
-      const hasNeedsReply = emails.some((email) => email.category === 'needs_reply')
-      if (hasNeedsReply) {
-        setFilter('needs_reply')
-      }
-    }
-  }, [emails, filter])
 
   const filteredEmails =
     filter === ALL_FILTER ? emails : emails.filter((email) => email.category === filter)
@@ -321,20 +303,15 @@ const Inbox = () => {
             <span className="text-xs font-medium text-muted-foreground">Filter</span>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            {categories.map((category, index) => {
+            {categories.map((category) => {
               const isNeedsReply = category === 'needs_reply'
               const needsReplyCount = isNeedsReply
                 ? emails.filter((email) => email.category === 'needs_reply').length
                 : 0
 
               return (
-                <motion.div
+                <Button
                   key={category}
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2, delay: index * 0.05 }}
-                >
-                  <Button
                     variant={filter === category ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setFilter(category)}
@@ -347,7 +324,6 @@ const Inbox = () => {
                       </Badge>
                     )}
                   </Button>
-                </motion.div>
               )
             })}
           </div>
@@ -357,11 +333,7 @@ const Inbox = () => {
         </div>
 
         {selectedEmailIds.size > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-3 p-3 border border-primary bg-primary/5 shadow-sm"
-          >
+          <div className="flex items-center gap-3 p-3 border border-primary bg-primary/5 shadow-sm">
             <div className="flex items-center gap-2">
               <div className="size-6 rounded-full bg-primary/10 flex items-center justify-center">
                 <span className="text-xs font-semibold text-primary">
@@ -373,10 +345,7 @@ const Inbox = () => {
               </span>
             </div>
             <Separator orientation="vertical" className="h-5" />
-            <motion.div
-              animate={!isGeneratingBulk ? { scale: [1, 1.05, 1] } : {}}
-              transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
-            >
+            <div>
               <Button
                 variant="default"
                 size="sm"
@@ -449,7 +418,7 @@ const Inbox = () => {
                 </>
               )}
               </Button>
-            </motion.div>
+            </div>
             <Button
               variant="ghost"
               size="sm"
@@ -457,7 +426,7 @@ const Inbox = () => {
             >
               Clear
             </Button>
-          </motion.div>
+          </div>
         )}
 
         <ScrollArea className="flex-1">
@@ -500,16 +469,11 @@ const Inbox = () => {
             </Empty>
           ) : (
             <div className="flex flex-col gap-2">
-                {filteredEmails.map((email, index) => {
+                {filteredEmails.map((email) => {
                   const isSelected = selectedEmailIds.has(email.message_id)
                   return (
-                    <motion.div
+                    <div
                       key={email.message_id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.2, delay: index * 0.03 }}
-                      whileHover={{ scale: 1.01 }}
-                      whileTap={{ scale: 0.99 }}
                       className={`group flex items-start gap-3 p-3 border transition-all cursor-pointer ${
                         isSelected
                           ? 'border-primary bg-primary/5 shadow-sm'
@@ -564,7 +528,7 @@ const Inbox = () => {
                           {email.snippet}
                         </span>
                       </div>
-                    </motion.div>
+                    </div>
                   )
                 })}
             </div>
@@ -573,13 +537,7 @@ const Inbox = () => {
       </div>
 
 {approvalMode && generatedReplies.size > 0 && (
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: 20 }}
-          transition={{ duration: 0.3 }}
-          className="w-96 shrink-0 flex flex-col gap-4 border-l border-border pl-4"
-        >
+        <div className="w-96 shrink-0 flex flex-col gap-4 border-l border-border pl-4">
           <div className="flex items-center justify-between">
             <div className="flex flex-col gap-0.5">
               <span className="text-sm font-semibold">Review Replies</span>
@@ -601,21 +559,14 @@ const Inbox = () => {
 
           <ScrollArea className="flex-1 -mr-4 pr-4">
             <div className="flex flex-col gap-2">
-              {Array.from(generatedReplies.entries()).map(([messageId, reply], index) => {
+              {Array.from(generatedReplies.entries()).map(([messageId, reply]) => {
                 const isActive = activeReviewEmailId === messageId
                 const isSent = reply.status === 'sent'
                 const isFailed = reply.status === 'failed'
 
                 return (
-                  <motion.div
+                  <Card
                     key={messageId}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.2, delay: index * 0.05 }}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Card
                       className={`cursor-pointer transition-all ${
                         isActive
                           ? 'border-primary shadow-md'
@@ -651,7 +602,6 @@ const Inbox = () => {
                         </Badge>
                       </CardContent>
                     </Card>
-                  </motion.div>
                 )
               })}
             </div>
@@ -667,7 +617,7 @@ const Inbox = () => {
               />
             </div>
           )}
-        </motion.div>
+        </div>
       )}
     </div>
   )
