@@ -64,8 +64,9 @@ class Settings:
     openai_api_key: str
     openrouter_api_key: str
 
-    # Gradium (STT)
+    # Gradium (STT + TTS)
     gradium_api_key: str
+    gradium_tts_voice_id: str
 
     story_verification_enabled: bool
 
@@ -190,17 +191,13 @@ def load_settings() -> Settings:
         openai_api_key=os.getenv("OPENAI_API_KEY", ""),
         openrouter_api_key=os.getenv("OPENROUTER_API_KEY", ""),
         gradium_api_key=os.getenv("GRADIUM_API_KEY", ""),
+        gradium_tts_voice_id=os.getenv("GRADIUM_TTS_VOICE_ID", "YTpq7expH9539ERJ"),
         story_verification_enabled=_get_bool("STORY_VERIFICATION_ENABLED", True),
 
         # Stripe
         stripe_secret_key=os.getenv("STRIPE_SECRET_KEY", ""),
         stripe_webhook_secret=os.getenv("STRIPE_WEBHOOK_SECRET", ""),
         stripe_price_id=os.getenv("STRIPE_PRICE_ID", ""),
-
-        # Gmail/Calendar limits (override via env for demo scaling)
-        max_gmail_messages_listed=_get_int("MAX_GMAIL_MESSAGES_LISTED", 20000),
-        max_gmail_messages_fetched=_get_int("MAX_GMAIL_MESSAGES_FETCHED", 10000),
-        max_calendar_events=_get_int("MAX_CALENDAR_EVENTS", 5000),
 
         # Story/dossier performance caps
         max_entity_evidence_items=_get_int("MAX_ENTITY_EVIDENCE_ITEMS", 250),
