@@ -97,7 +97,6 @@ export interface AgentResponse {
   sources?: AgentSource[]
 }
 
-<<<<<<< HEAD
 export interface VoiceChatResponse {
   transcript: string
   response_text: string
@@ -105,7 +104,8 @@ export interface VoiceChatResponse {
   audio_format: string
   duration_ms: number
   tool_calls: Record<string, unknown>[]
-=======
+}
+
 export interface ChatMessage {
   role: string
   content: string
@@ -115,7 +115,6 @@ export interface ChatResponse {
   response: string
   tool_calls: Record<string, unknown>[]
   conversation: ChatMessage[]
->>>>>>> ac27adf02fa67ba72e3560177ed1b3ca773d3042
 }
 
 export interface CalendarEventResponse {
