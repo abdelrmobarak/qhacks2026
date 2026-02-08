@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import asyncio
+import base64
+import logging
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,7 +26,13 @@ from app.services.agents.email_agent import (
     detect_subscriptions,
     extract_todos,
 )
+
 from app.services.embedding import search_emails as semantic_search_emails
+from app.services.agents.base import call_llm
+from app.services.stt import transcribe_audio
+from app.services.tts import synthesize_speech
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -272,16 +281,13 @@ async def agent_command(
 
 @router.post("/voice")
 async def agent_voice(
-    db: Annotated[AsyncSession, Depends(get_db)],
-    user: Annotated[User, Depends(require_current_user)],
     file: UploadFile = File(...),
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
+    user: Annotated[User, Depends(require_current_user)] = None,
 ):
     """Process a voice command: STT -> Agent Router -> Execute."""
-    from app.services.stt import transcribe_audio
-
     access_token = await get_valid_access_token(user, db)
 
-    # Step 1: Transcribe audio
     audio_bytes = await file.read()
     transcript = await transcribe_audio(audio_bytes, filename=file.filename or "audio.wav")
 
@@ -293,7 +299,6 @@ async def agent_voice(
             "message": "Could not transcribe audio. Please try again.",
         }
 
-    # Step 2: Route the transcribed command
     routing = await asyncio.to_thread(route_command, transcript)
     action = routing.get("action", "unknown")
     params = routing.get("parameters", {})
@@ -310,3 +315,69 @@ async def agent_voice(
         "steps": _build_steps(action, params, routing, result),
         "sources": _build_sources(action, result),
     }
+
+
+VOICE_CHAT_SYSTEM_PROMPT = (
+    "You are SaturdAI, a friendly and concise voice assistant. "
+    "The user is speaking to you through a voice interface. "
+    "Keep responses brief (1-3 sentences) and conversational. "
+    "Do not use markdown, bullet points, or formatting since your response will be spoken aloud. "
+    "Be warm, helpful, and natural."
+)
+
+
+class VoiceChatResponse(BaseModel):
+    transcript: str
+    response_text: str
+    audio_base64: str
+    audio_format: str
+    duration_ms: float
+
+
+@router.post("/voice-chat")
+async def agent_voice_chat(
+    file: UploadFile = File(...),
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
+    user: Annotated[User, Depends(require_current_user)] = None,
+) -> VoiceChatResponse:
+    """Voice chat: STT -> LLM conversation -> TTS. Returns transcript, response text, and audio."""
+    started_at = time.monotonic()
+
+    audio_bytes = await file.read()
+
+    try:
+        transcript = await transcribe_audio(audio_bytes, filename=file.filename or "audio.wav")
+    except Exception:
+        logger.exception("STT failed")
+        raise HTTPException(status_code=502, detail="Speech-to-text failed")
+
+    if not transcript.strip():
+        raise HTTPException(status_code=422, detail="Could not transcribe audio. Please try again.")
+
+    try:
+        response_text = await asyncio.to_thread(
+            call_llm,
+            VOICE_CHAT_SYSTEM_PROMPT,
+            transcript,
+            300,
+        )
+    except Exception:
+        logger.exception("LLM call failed")
+        raise HTTPException(status_code=502, detail="AI response generation failed")
+
+    try:
+        response_audio = await synthesize_speech(response_text)
+    except Exception:
+        logger.exception("TTS failed")
+        raise HTTPException(status_code=502, detail="Text-to-speech synthesis failed")
+
+    audio_base64 = base64.b64encode(response_audio).decode("ascii")
+    elapsed_ms = (time.monotonic() - started_at) * 1000
+
+    return VoiceChatResponse(
+        transcript=transcript,
+        response_text=response_text,
+        audio_base64=audio_base64,
+        audio_format="wav",
+        duration_ms=round(elapsed_ms, 1),
+    )

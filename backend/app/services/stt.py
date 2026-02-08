@@ -78,7 +78,10 @@ async def transcribe_audio(audio_bytes: bytes, filename: str = "audio.wav") -> s
         input_format = "pcm"
 
     # Stream audio to Gradium and collect transcription
-    client = gradium.client.GradiumClient(api_key=settings.gradium_api_key)
+    client = gradium.client.GradiumClient(
+        api_key=settings.gradium_api_key,
+        base_url="https://us.api.gradium.ai/api/",
+    )
 
     async def audio_generator():
         for i in range(0, len(pcm_data), GRADIUM_FRAME_SIZE * 2):  # *2 for 16-bit
