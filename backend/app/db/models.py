@@ -59,6 +59,9 @@ class User(Base):
     subscription_cache: Mapped[Optional["SubscriptionCache"]] = relationship(
         "SubscriptionCache", back_populates="user", cascade="all, delete-orphan", uselist=False
     )
+    daily_report_cache: Mapped[Optional["DailyReportCache"]] = relationship(
+        "DailyReportCache", back_populates="user", cascade="all, delete-orphan", uselist=False
+    )
 
 
 class Session(Base):
@@ -158,3 +161,18 @@ class SubscriptionCache(Base):
     )
 
     user: Mapped["User"] = relationship("User", back_populates="subscription_cache")
+
+
+class DailyReportCache(Base):
+    __tablename__ = "daily_report_cache"
+
+    id: Mapped[UUIDType] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUIDType] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    report_json: Mapped[str] = mapped_column(Text, nullable=False)
+    cached_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    user: Mapped["User"] = relationship("User", back_populates="daily_report_cache")

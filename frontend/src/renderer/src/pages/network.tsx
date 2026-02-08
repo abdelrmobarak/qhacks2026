@@ -57,18 +57,18 @@ interface ViewTransform {
 }
 
 const NODE_COLORS = [
-  'oklch(0.65 0.18 250)',
-  'oklch(0.65 0.18 290)',
-  'oklch(0.65 0.18 330)',
-  'oklch(0.65 0.18 20)',
-  'oklch(0.65 0.18 50)',
-  'oklch(0.65 0.18 130)',
-  'oklch(0.65 0.18 170)',
-  'oklch(0.65 0.18 210)',
+  'oklch(0.7 0.15 250)',
+  'oklch(0.7 0.15 290)',
+  'oklch(0.7 0.15 330)',
+  'oklch(0.7 0.15 20)',
+  'oklch(0.7 0.15 50)',
+  'oklch(0.7 0.15 130)',
+  'oklch(0.7 0.15 170)',
+  'oklch(0.7 0.15 210)',
 ]
 
 const hashDomainToColor = (domain: string | undefined): string => {
-  if (!domain) return 'oklch(0.55 0 0)'
+  if (!domain) return 'oklch(0.6 0 0)'
   let hash = 0
   for (let charIndex = 0; charIndex < domain.length; charIndex++) {
     hash = domain.charCodeAt(charIndex) + ((hash << 5) - hash)
@@ -91,6 +91,7 @@ const Network = () => {
   const [transform, setTransform] = useState<ViewTransform>({ x: 0, y: 0, scale: 1 })
 
   const containerRef = useRef<HTMLDivElement>(null)
+  const svgRef = useRef<SVGSVGElement>(null)
   const isPanningRef = useRef(false)
   const panStartRef = useRef({ x: 0, y: 0, transformX: 0, transformY: 0 })
 
@@ -163,7 +164,7 @@ const Network = () => {
     loadGraph()
   }, [loadGraph])
 
-  const handleWheel = useCallback((wheelEvent: React.WheelEvent) => {
+  const handleWheel = useCallback((wheelEvent: WheelEvent) => {
     wheelEvent.preventDefault()
     const scaleFactor = wheelEvent.deltaY > 0 ? 0.92 : 1.08
     setTransform((previous) => {
@@ -184,6 +185,13 @@ const Network = () => {
       }
     })
   }, [])
+
+  useEffect(() => {
+    const svgElement = svgRef.current
+    if (!svgElement) return
+    svgElement.addEventListener('wheel', handleWheel, { passive: false })
+    return () => svgElement.removeEventListener('wheel', handleWheel)
+  }, [handleWheel, simulationNodes])
 
   const handleBackgroundMouseDown = useCallback(
     (mouseEvent: React.MouseEvent) => {
@@ -286,8 +294,8 @@ const Network = () => {
   return (
     <div className="absolute inset-0 overflow-hidden" ref={containerRef}>
       <svg
+        ref={svgRef}
         className="h-full w-full cursor-grab active:cursor-grabbing"
-        onWheel={handleWheel}
         onMouseDown={handleBackgroundMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -305,7 +313,7 @@ const Network = () => {
             <path
               d={`M ${20 * transform.scale} 0 L 0 0 0 ${20 * transform.scale}`}
               fill="none"
-              stroke="oklch(0.7 0 0 / 0.15)"
+              stroke="oklch(0.55 0 0 / 0.15)"
               strokeWidth={0.5}
             />
           </pattern>
@@ -325,7 +333,7 @@ const Network = () => {
             <path
               d={`M ${100 * transform.scale} 0 L 0 0 0 ${100 * transform.scale}`}
               fill="none"
-              stroke="oklch(0.7 0 0 / 0.3)"
+              stroke="oklch(0.55 0 0 / 0.25)"
               strokeWidth={0.5}
             />
           </pattern>
@@ -348,7 +356,7 @@ const Network = () => {
                 y1={simLink.source.y}
                 x2={simLink.target.x}
                 y2={simLink.target.y}
-                stroke={isSelectedEdge ? 'oklch(0.40 0.17 262)' : 'oklch(0.8 0 0)'}
+                stroke={isSelectedEdge ? 'oklch(0.6 0.18 262)' : 'oklch(0.55 0 0)'}
                 strokeWidth={Math.max(0.5, normalizedWeight * 3)}
                 strokeOpacity={
                   selectedNode
@@ -375,7 +383,7 @@ const Network = () => {
             const shouldDim = selectedNode && !isSelected && !isConnectedToSelected
 
             const fillColor = isYouNode
-              ? 'oklch(0.40 0.17 262)'
+              ? 'oklch(0.6 0.18 262)'
               : hashDomainToColor(simNode.domain)
 
             return (
@@ -422,7 +430,7 @@ const Network = () => {
                   x={simNode.x}
                   y={simNode.y + nodeRadius + 12}
                   textAnchor="middle"
-                  fill="oklch(0.4 0 0)"
+                  fill="oklch(0.55 0 0)"
                   fontSize={10}
                   fontWeight={isYouNode ? 600 : 400}
                 >

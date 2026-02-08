@@ -281,8 +281,9 @@ export const api = {
     return fetchAPI<{ deleted: boolean }>('/v1/me', { method: 'DELETE' })
   },
 
-  getDailyReport: async (): Promise<DailyReport> => {
-    return fetchAPI<DailyReport>('/reports/daily')
+  getDailyReport: async (regenerate = false): Promise<DailyReport> => {
+    const query = regenerate ? '?regenerate=true' : ''
+    return fetchAPI<DailyReport>(`/reports/daily${query}`)
   },
 
   getNetworkGraph: async (): Promise<NetworkGraphResponse> => {
