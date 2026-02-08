@@ -43,6 +43,29 @@ def _format_gmail_message(msg) -> dict:
     }
 
 
+class SendEmailRequest(BaseModel):
+    to: str
+    subject: str
+    body: str
+
+
+@router.post("/send")
+async def send_email(
+    request: SendEmailRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[User, Depends(require_current_user)],
+):
+    """Compose and send a new email."""
+    access_token = await get_valid_access_token(user, db)
+    result = await send_reply(
+        access_token,
+        to=request.to,
+        subject=request.subject,
+        body=request.body,
+    )
+    return {"sent": True, "message_id": result.get("id")}
+
+
 @router.get("/recent")
 async def get_recent_emails(
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -60,7 +83,6 @@ async def get_recent_emails(
     messages = await fetch_messages(access_token, message_ids, include_body=True)
     email_dicts = [_format_gmail_message(m) for m in messages]
 
-    # Run categorization in a thread (it calls the sync LLM)
     categorized = await asyncio.to_thread(categorize_emails, email_dicts)
     return {"emails": categorized}
 
@@ -119,7 +141,6 @@ async def handle_reply(
         suggestion = await asyncio.to_thread(generate_reply, email_data, user.name or user.email)
         return {"generated": True, "suggestion": suggestion}
 
-    # Send the reply
     result = await send_reply(
         access_token,
         to=request.to,

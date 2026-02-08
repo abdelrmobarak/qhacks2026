@@ -1,9 +1,11 @@
 """Base utilities for agent implementations."""
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import time
+from collections.abc import Awaitable, Callable
 from typing import Any, cast
 
 import httpx
@@ -506,3 +508,148 @@ def call_llm_json(
             json_mode=True,
         )
         return parse_json_response(retry_content)
+
+
+def _get_tool_calling_url() -> tuple[str, dict[str, str]]:
+    """Return the (base_url, headers) for the configured provider's chat completions endpoint."""
+    provider = (settings.llm_provider or "openai").lower()
+
+    if provider == "openrouter":
+        if not settings.openrouter_api_key:
+            raise ValueError("OPENROUTER_API_KEY not configured")
+        return (
+            "https://openrouter.ai/api/v1/chat/completions",
+            {
+                "Authorization": f"Bearer {settings.openrouter_api_key}",
+                "Content-Type": "application/json",
+            },
+        )
+
+    if not settings.openai_api_key:
+        raise ValueError("OPENAI_API_KEY not configured")
+    return (
+        "https://api.openai.com/v1/chat/completions",
+        {
+            "Authorization": f"Bearer {settings.openai_api_key}",
+            "Content-Type": "application/json",
+        },
+    )
+
+
+def _chat_completions_with_tools(
+    messages: list[dict[str, Any]],
+    tools: list[dict[str, Any]],
+    max_tokens: int,
+    model: str,
+) -> dict[str, Any]:
+    """Single chat completions call with tool definitions. Returns the raw payload."""
+    url, headers = _get_tool_calling_url()
+
+    request_body: dict[str, Any] = {
+        "model": model,
+        "messages": messages,
+        "tools": tools,
+        "max_tokens": max_tokens,
+        "temperature": 0,
+    }
+
+    with httpx.Client(timeout=120) as client:
+        response = client.post(url, headers=headers, json=request_body)
+
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError:
+            details = _format_openai_http_error(response)
+            logger.warning(
+                "Tool-calling request failed (%s) model=%s: %s",
+                response.status_code,
+                model,
+                details,
+            )
+            raise
+
+        return response.json()
+
+
+async def call_llm_with_tools(
+    messages: list[dict[str, Any]],
+    tools: list[dict[str, Any]],
+    tool_executor: Callable[[str, dict], Awaitable[dict]],
+    max_tokens: int = 1000,
+    model: str | None = None,
+    max_tool_rounds: int = 5,
+) -> tuple[str, list[dict[str, Any]]]:
+    """Run a multi-turn tool-calling loop with the LLM.
+
+    Returns (final_text_response, tool_call_log).
+    Both OpenAI and OpenRouter use the same chat completions format.
+    """
+    resolved_model = model or settings.llm_model
+    tool_call_log: list[dict[str, Any]] = []
+    working_messages = list(messages)
+
+    for round_index in range(max_tool_rounds):
+        payload = await asyncio.to_thread(
+            _chat_completions_with_tools,
+            working_messages,
+            tools,
+            max_tokens,
+            resolved_model,
+        )
+
+        choices = payload.get("choices", [])
+        if not choices:
+            logger.warning("Tool-calling response had no choices: %s", payload)
+            return "I wasn't able to process that request.", tool_call_log
+
+        choice = choices[0]
+        assistant_message = choice.get("message", {})
+        finish_reason = choice.get("finish_reason", "")
+        tool_calls = assistant_message.get("tool_calls")
+
+        if not tool_calls:
+            content = assistant_message.get("content", "")
+            return content or "Done.", tool_call_log
+
+        working_messages.append(assistant_message)
+
+        for tool_call in tool_calls:
+            function_data = tool_call.get("function", {})
+            tool_name = function_data.get("name", "")
+            tool_call_id = tool_call.get("id", "")
+
+            try:
+                arguments = json.loads(function_data.get("arguments", "{}"))
+            except json.JSONDecodeError:
+                arguments = {}
+
+            logger.info("Executing tool: %s(%s)", tool_name, arguments)
+            result = await tool_executor(tool_name, arguments)
+
+            tool_call_log.append({
+                "tool": tool_name,
+                "arguments": arguments,
+                "result": result,
+            })
+
+            working_messages.append({
+                "role": "tool",
+                "tool_call_id": tool_call_id,
+                "content": json.dumps(result),
+            })
+
+        if finish_reason == "stop":
+            content = assistant_message.get("content", "")
+            return content or "Done.", tool_call_log
+
+    final_payload = await asyncio.to_thread(
+        _chat_completions_with_tools,
+        working_messages,
+        [],
+        max_tokens,
+        resolved_model,
+    )
+    final_choices = final_payload.get("choices", [])
+    if final_choices:
+        return final_choices[0].get("message", {}).get("content", "Done."), tool_call_log
+    return "Done.", tool_call_log

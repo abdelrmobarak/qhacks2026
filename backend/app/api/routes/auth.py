@@ -4,8 +4,7 @@ from datetime import datetime, timedelta, timezone
 import logging
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, Response
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Query, Response
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -52,13 +51,15 @@ class LogoutResponse(BaseModel):
 async def get_current_user(
     db: Annotated[AsyncSession, Depends(get_db)],
     session_cookie: Annotated[Optional[str], Cookie(alias=SESSION_COOKIE_NAME)] = None,
+    x_session_token: Annotated[Optional[str], Header()] = None,
 ) -> Optional[User]:
-    """Get the current authenticated user from session cookie."""
-    if not session_cookie:
+    """Get the current authenticated user from session cookie or X-Session-Token header."""
+    token = session_cookie or x_session_token
+    if not token:
         return None
 
     session_id = verify_session_token(
-        session_cookie,
+        token,
         settings.session_secret,
         settings.session_max_age_seconds,
     )
@@ -121,6 +122,7 @@ async def google_callback(
     code: str = Query(...),
     state: str = Query(...),
     error: Optional[str] = Query(None),
+    playground_return: Annotated[Optional[str], Cookie(alias="_playground_return")] = None,
 ) -> dict:
     """Handle the Google OAuth callback."""
     # Check for errors from Google
@@ -182,13 +184,13 @@ async def google_callback(
         max_age=settings.session_max_age_seconds,
     )
 
-    deep_link = f"saturdai://auth/success?token={session_token}"
-    return HTMLResponse(
-        content="<html><body style='font-family:system-ui;display:flex;justify-content:center;align-items:center;height:100vh;margin:0'>"
-        "<p>Sign-in complete. Redirecting to app…</p></body>"
-        f"<script>window.location.href='{deep_link}'</script></html>",
-        headers={"set-cookie": response.headers.get("set-cookie", "")},
-    )
+    frontend_url = settings.cors_origins[0] if settings.cors_origins else "http://localhost:5173"
+    redirect_url = f"{frontend_url}/auth/callback?token={session_token}"
+
+    response.status_code = 302
+    response.headers["Location"] = redirect_url
+
+    return {"status": "success", "redirect": redirect_url}
 
 
 @router.get("/status", response_model=AuthStatusResponse)

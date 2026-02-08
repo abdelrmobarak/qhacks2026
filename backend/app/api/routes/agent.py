@@ -1,4 +1,4 @@
-"""Agent endpoints: text commands and voice commands."""
+"""Agent endpoints: text commands, voice commands, and chat with function calling."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import base64
 import logging
 import time
 from datetime import datetime, timedelta, timezone
-from typing import Annotated
+from typing import Annotated, Any, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
@@ -29,6 +29,7 @@ from app.services.agents.email_agent import (
 
 from app.services.embedding import search_emails as semantic_search_emails
 from app.services.agents.base import call_llm
+from app.services.agents.function_calling_agent import run_agent
 from app.services.stt import transcribe_audio
 from app.services.tts import synthesize_speech
 
@@ -144,7 +145,7 @@ async def _execute_action(
     user_id: "UUIDType | None" = None,
     db: "AsyncSession | None" = None,
 ) -> tuple[dict, str]:
-    """Execute a routed action. Returns (result_dict, human_message)."""
+    """Execute a routed action (fallback path). Returns (result_dict, human_message)."""
 
     if action in ("summarize_emails", "create_tldr"):
         message_refs = await list_messages(
@@ -166,7 +167,7 @@ async def _execute_action(
             parts.append(f"- {sender}: {gist}{action}")
         return digest, "\n".join(parts) if parts else "No highlights found."
 
-    if action == "suggest_replies" or action == "fetch_recent":
+    if action in ("suggest_replies", "fetch_recent"):
         message_refs = await list_messages(
             access_token, query="in:inbox newer_than:7d", max_results=20
         )
@@ -176,7 +177,7 @@ async def _execute_action(
         messages = await fetch_messages(access_token, msg_ids, include_body=True)
         email_dicts = [_format_gmail_message(m) for m in messages]
         categorized = await asyncio.to_thread(categorize_emails, email_dicts)
-        needs_reply = [e for e in categorized if e.get("category") == "needs_reply"]
+        needs_reply = [email_item for email_item in categorized if email_item.get("category") == "needs_reply"]
         return {"emails": categorized}, f"Found {len(categorized)} emails, {len(needs_reply)} need replies."
 
     if action == "track_subscriptions":
@@ -210,7 +211,6 @@ async def _execute_action(
         return todos_result, f"Found {todo_count} action items from your recent emails."
 
     if action == "add_to_calendar":
-        # Parse date/time from parameters
         date_str = params.get("date", "")
         start_time = params.get("start_time", "09:00")
         end_time = params.get("end_time", "10:00")
@@ -221,7 +221,6 @@ async def _execute_action(
             start = datetime.fromisoformat(f"{date_str}T{start_time}:00+00:00")
             end = datetime.fromisoformat(f"{date_str}T{end_time}:00+00:00")
         except (ValueError, TypeError):
-            # Default to tomorrow 9-10 AM
             tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
             start = tomorrow.replace(hour=9, minute=0, second=0, microsecond=0)
             end = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
@@ -258,15 +257,24 @@ async def agent_command(
     db: Annotated[AsyncSession, Depends(get_db)],
     user: Annotated[User, Depends(require_current_user)],
 ):
-    """Process a text command through the AI agent router."""
+    """Process a text command through the function-calling agent."""
     access_token = await get_valid_access_token(user, db)
 
-    # Route the command
+    try:
+        agent_response = await run_agent(request.command, access_token)
+        return {
+            "action": "function_calling",
+            "result": {"tool_calls": agent_response.tool_calls},
+            "message": agent_response.response_text,
+            "routing_confidence": 1.0,
+        }
+    except Exception:
+        logger.exception("Function-calling agent failed, falling back to router")
+
     routing = await asyncio.to_thread(route_command, request.command)
     action = routing.get("action", "unknown")
     params = routing.get("parameters", {})
 
-    # Execute the action
     result, message = await _execute_action(action, params, access_token, user_id=user.id, db=db)
 
     return {
@@ -279,13 +287,40 @@ async def agent_command(
     }
 
 
+class ChatRequest(BaseModel):
+    message: str
+    conversation_history: Optional[list[dict[str, Any]]] = None
+
+
+@router.post("/chat")
+async def agent_chat(
+    request: ChatRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[User, Depends(require_current_user)],
+):
+    """Chat endpoint with function calling and conversation history support."""
+    access_token = await get_valid_access_token(user, db)
+
+    agent_response = await run_agent(
+        request.message,
+        access_token,
+        conversation_history=request.conversation_history,
+    )
+
+    return {
+        "response": agent_response.response_text,
+        "tool_calls": agent_response.tool_calls,
+        "conversation": agent_response.conversation,
+    }
+
+
 @router.post("/voice")
 async def agent_voice(
     file: UploadFile = File(...),
     db: Annotated[AsyncSession, Depends(get_db)] = None,
     user: Annotated[User, Depends(require_current_user)] = None,
 ):
-    """Process a voice command: STT -> Agent Router -> Execute."""
+    """Process a voice command: STT -> Function-calling Agent -> Execute."""
     access_token = await get_valid_access_token(user, db)
 
     audio_bytes = await file.read()
@@ -298,6 +333,18 @@ async def agent_voice(
             "result": {},
             "message": "Could not transcribe audio. Please try again.",
         }
+
+    try:
+        agent_response = await run_agent(transcript, access_token, voice_mode=True)
+        return {
+            "transcript": transcript,
+            "action": "function_calling",
+            "result": {"tool_calls": agent_response.tool_calls},
+            "message": agent_response.response_text,
+            "routing_confidence": 1.0,
+        }
+    except Exception:
+        logger.exception("Function-calling agent failed for voice, falling back to router")
 
     routing = await asyncio.to_thread(route_command, transcript)
     action = routing.get("action", "unknown")
@@ -312,18 +359,7 @@ async def agent_voice(
         "result": result,
         "message": message,
         "routing_confidence": routing.get("confidence", 0),
-        "steps": _build_steps(action, params, routing, result),
-        "sources": _build_sources(action, result),
     }
-
-
-VOICE_CHAT_SYSTEM_PROMPT = (
-    "You are SaturdAI, a friendly and concise voice assistant. "
-    "The user is speaking to you through a voice interface. "
-    "Keep responses brief (1-3 sentences) and conversational. "
-    "Do not use markdown, bullet points, or formatting since your response will be spoken aloud. "
-    "Be warm, helpful, and natural."
-)
 
 
 class VoiceChatResponse(BaseModel):
@@ -332,6 +368,7 @@ class VoiceChatResponse(BaseModel):
     audio_base64: str
     audio_format: str
     duration_ms: float
+    tool_calls: list[dict[str, Any]] = []
 
 
 @router.post("/voice-chat")
@@ -340,8 +377,9 @@ async def agent_voice_chat(
     db: Annotated[AsyncSession, Depends(get_db)] = None,
     user: Annotated[User, Depends(require_current_user)] = None,
 ) -> VoiceChatResponse:
-    """Voice chat: STT -> LLM conversation -> TTS. Returns transcript, response text, and audio."""
+    """Voice chat with function calling: STT -> Agent -> TTS."""
     started_at = time.monotonic()
+    access_token = await get_valid_access_token(user, db)
 
     audio_bytes = await file.read()
 
@@ -355,15 +393,22 @@ async def agent_voice_chat(
         raise HTTPException(status_code=422, detail="Could not transcribe audio. Please try again.")
 
     try:
+        agent_response = await run_agent(transcript, access_token, voice_mode=True)
+        response_text = agent_response.response_text
+        tool_calls = agent_response.tool_calls
+    except Exception:
+        logger.exception("Function-calling agent failed in voice-chat, falling back to plain LLM")
         response_text = await asyncio.to_thread(
             call_llm,
-            VOICE_CHAT_SYSTEM_PROMPT,
+            (
+                "You are SaturdAI, a friendly and concise voice assistant. "
+                "Keep responses brief (1-3 sentences) and conversational. "
+                "Do not use markdown, bullet points, or formatting since your response will be spoken aloud."
+            ),
             transcript,
             300,
         )
-    except Exception:
-        logger.exception("LLM call failed")
-        raise HTTPException(status_code=502, detail="AI response generation failed")
+        tool_calls = []
 
     try:
         response_audio = await synthesize_speech(response_text)
@@ -380,4 +425,5 @@ async def agent_voice_chat(
         audio_base64=audio_base64,
         audio_format="wav",
         duration_ms=round(elapsed_ms, 1),
+        tool_calls=tool_calls,
     )
