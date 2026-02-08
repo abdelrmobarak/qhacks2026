@@ -1,7 +1,6 @@
 import { useCallback, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
-import { api } from './lib/api'
 import { AppLayout } from './components/app-layout'
 import { AuthGate } from './components/auth-gate'
 import Dashboard from './pages/Dashboard'
@@ -26,12 +25,14 @@ const App = () => {
 
   const handleLogin = useCallback(async () => {
     try {
-      const { auth_url } = await api.startGoogleAuth()
-      window.open(auth_url, '_blank')
+      const result = await window.api.startGoogleAuth()
+      if (result.success) {
+        refresh()
+      }
     } catch (error) {
       console.error('Failed to start auth:', error)
     }
-  }, [])
+  }, [refresh])
 
   if (!isAuthenticated) {
     return <AuthGate isLoading={isLoading} onLogin={handleLogin} />

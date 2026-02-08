@@ -1,17 +1,9 @@
 import { app, shell, BrowserWindow, ipcMain, session } from 'electron'
-import path, { join } from 'path'
+import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 
-const PROTOCOL = 'saturdai'
-
-if (process.defaultApp) {
-  if (process.argv.length >= 2) {
-    app.setAsDefaultProtocolClient(PROTOCOL, process.execPath, [path.resolve(process.argv[1])])
-  }
-} else {
-  app.setAsDefaultProtocolClient(PROTOCOL)
-}
+const BACKEND_URL = 'http://localhost:8000'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -59,7 +51,7 @@ app.whenReady().then(() => {
   // OAuth IPC: open Google consent in a modal BrowserWindow, intercept callback
   ipcMain.handle('auth:start-google', async () => {
     try {
-      const response = await fetch('http://localhost:8000/auth/google/start', {
+      const response = await fetch(`${BACKEND_URL}/auth/google/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       })
@@ -75,63 +67,37 @@ app.whenReady().then(() => {
           webPreferences: { nodeIntegration: false, contextIsolation: true }
         })
 
-        authWindow.webContents.on('will-redirect', (_event, url) => {
-          if (url.includes('/auth/google/callback')) {
-            // Let the backend handle the callback to set the cookie, then close
-            authWindow.webContents.on('did-finish-load', () => {
-              // Extract cookies from the auth window and relay to main window
-              authWindow.webContents.session.cookies
-                .get({ url: 'http://localhost:8000' })
-                .then((cookies) => {
-                  const sessionCookie = cookies.find((c) => c.name === 'sandbox_session')
-                  if (sessionCookie && mainWindow) {
-                    mainWindow.webContents.session.cookies.set({
-                      url: 'http://localhost:8000',
-                      name: sessionCookie.name,
-                      value: sessionCookie.value,
-                      path: sessionCookie.path || '/',
-                      httpOnly: sessionCookie.httpOnly,
-                      secure: sessionCookie.secure
-                    })
-                  }
-                })
-                .finally(() => {
-                  authWindow.close()
-                  resolve({ success: true })
-                })
-            })
-          }
-        })
+        let resolved = false
+        const finish = async (url: string): Promise<void> => {
+          if (resolved) return
+          if (!url.includes('/auth/callback') || !url.includes('token=')) return
 
-        // Also handle navigation for non-redirect flows
-        authWindow.webContents.on('will-navigate', (_event, url) => {
-          if (url.includes('/auth/google/callback')) {
-            authWindow.webContents.on('did-finish-load', () => {
-              authWindow.webContents.session.cookies
-                .get({ url: 'http://localhost:8000' })
-                .then((cookies) => {
-                  const sessionCookie = cookies.find((c) => c.name === 'sandbox_session')
-                  if (sessionCookie && mainWindow) {
-                    mainWindow.webContents.session.cookies.set({
-                      url: 'http://localhost:8000',
-                      name: sessionCookie.name,
-                      value: sessionCookie.value,
-                      path: sessionCookie.path || '/',
-                      httpOnly: sessionCookie.httpOnly,
-                      secure: sessionCookie.secure
-                    })
-                  }
-                })
-                .finally(() => {
-                  authWindow.close()
-                  resolve({ success: true })
-                })
+          resolved = true
+          const parsed = new URL(url)
+          const token = parsed.searchParams.get('token')
+
+          if (token) {
+            await session.defaultSession.cookies.set({
+              url: BACKEND_URL,
+              name: 'sandbox_session',
+              value: token,
+              path: '/',
+              httpOnly: true
             })
           }
-        })
+
+          authWindow.close()
+          resolve({ success: true })
+        }
+
+        authWindow.webContents.on('will-redirect', (_event, url) => finish(url))
+        authWindow.webContents.on('will-navigate', (_event, url) => finish(url))
 
         authWindow.on('closed', () => {
-          resolve({ success: false, error: 'Window closed' })
+          if (!resolved) {
+            resolved = true
+            resolve({ success: false, error: 'Window closed' })
+          }
         })
 
         authWindow.loadURL(auth_url)
@@ -152,28 +118,6 @@ app.whenReady().then(() => {
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
-})
-
-app.on('open-url', async (_event, url) => {
-  if (!url.startsWith(`${PROTOCOL}://auth/success`)) return
-  if (!mainWindow) return
-
-  const parsedUrl = new URL(url)
-  const token = parsedUrl.searchParams.get('token')
-
-  if (token) {
-    await session.defaultSession.cookies.set({
-      url: 'http://localhost:8000',
-      name: 'sandbox_session',
-      value: token,
-      path: '/',
-      httpOnly: true
-    })
-  }
-
-  if (mainWindow.isMinimized()) mainWindow.restore()
-  mainWindow.focus()
-  mainWindow.webContents.send('auth:completed')
 })
 
 app.on('window-all-closed', () => {

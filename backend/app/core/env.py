@@ -18,6 +18,23 @@ def _split_csv(value: str | None) -> list[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
+def _get_bool(key: str, default: bool = False) -> bool:
+    value = os.getenv(key)
+    if value is None:
+        return default
+    return value.lower() in ("1", "true", "yes")
+
+
+def _get_int(key: str, default: int = 0) -> int:
+    value = os.getenv(key)
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except ValueError:
+        return default
+
+
 @dataclass(frozen=True)
 class Settings:
     env: str
@@ -47,8 +64,9 @@ class Settings:
     openai_api_key: str
     openrouter_api_key: str
 
-    # Gradium (STT)
+    # Gradium (STT + TTS)
     gradium_api_key: str
+    gradium_tts_voice_id: str
 
     # Session settings
     session_max_age_seconds: int = field(default=60 * 60 * 24 * 7)  # 7 days
@@ -56,6 +74,20 @@ class Settings:
     # OpenClaw bridge (localhost API key auth)
     openclaw_api_key: str = field(default="")
     openclaw_user_email: str = field(default="")
+
+    # Story/dossier settings
+    story_verification_enabled: bool = field(default=True)
+
+    # Stripe
+    stripe_secret_key: str = field(default="")
+    stripe_webhook_secret: str = field(default="")
+    stripe_price_id: str = field(default="")
+
+    # Performance caps
+    max_entity_evidence_items: int = field(default=250)
+    max_thread_summaries: int = field(default=10)
+    max_meeting_summaries: int = field(default=10)
+    llm_parallelism: int = field(default=3)
 
 
 _CACHED_SETTINGS: Settings | None = None
@@ -155,6 +187,19 @@ def load_settings() -> Settings:
         gradium_api_key=os.getenv("GRADIUM_API_KEY", ""),
         openclaw_api_key=os.getenv("OPENCLAW_API_KEY", ""),
         openclaw_user_email=os.getenv("OPENCLAW_USER_EMAIL", ""),
+        gradium_tts_voice_id=os.getenv("GRADIUM_TTS_VOICE_ID", "YTpq7expH9539ERJ"),
+        story_verification_enabled=_get_bool("STORY_VERIFICATION_ENABLED", True),
+
+        # Stripe
+        stripe_secret_key=os.getenv("STRIPE_SECRET_KEY", ""),
+        stripe_webhook_secret=os.getenv("STRIPE_WEBHOOK_SECRET", ""),
+        stripe_price_id=os.getenv("STRIPE_PRICE_ID", ""),
+
+        # Story/dossier performance caps
+        max_entity_evidence_items=_get_int("MAX_ENTITY_EVIDENCE_ITEMS", 250),
+        max_thread_summaries=_get_int("MAX_THREAD_SUMMARIES", 10),
+        max_meeting_summaries=_get_int("MAX_MEETING_SUMMARIES", 10),
+        llm_parallelism=_get_int("LLM_PARALLELISM", 3),
     )
 
     _CACHED_SETTINGS = settings
