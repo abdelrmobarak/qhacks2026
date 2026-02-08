@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import asyncio
 from contextlib import asynccontextmanager
-import logging
 import os
 from pathlib import Path
 
@@ -36,29 +36,23 @@ settings = load_settings()
 
 from app.api.router import api_router
 from app.middleware.rate_limit import RateLimitMiddleware
+from app.services.todo_sync import run_todo_sync_loop
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan handler."""
-    # Startup
-    try:
-        from app.jobs.scheduler import schedule_all_jobs
-
-        schedule_all_jobs()
-    except Exception as e:
-        logging.getLogger(__name__).warning("Scheduler setup failed: %s", e)
-
+    sync_task = asyncio.create_task(run_todo_sync_loop())
     yield
+    sync_task.cancel()
 
-    # Shutdown
     from app.db.engine import engine
     await engine.dispose()
 
 
 app = FastAPI(
-    title="Sandbox API",
-    description="Gmail + Calendar snapshot demo API",
+    title="SaturdAI API",
+    description="Personal AI assistant for email, calendar, and more",
     version="1.0.0",
     lifespan=lifespan,
 )

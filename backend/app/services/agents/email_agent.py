@@ -186,6 +186,179 @@ Rules:
 - Deduplicate services (only list each service once with the latest info)"""
 
 
+# ---------------------------------------------------------------------------
+# Todo extraction from emails
+# ---------------------------------------------------------------------------
+
+TODOS_SYSTEM_PROMPT = """You are a task extraction assistant. Given a list of recent emails, extract actionable to-do items.
+
+Look for:
+- Direct requests or asks from people
+- Deadlines and due dates mentioned
+- Meeting follow-ups or action items
+- Bills to pay or forms to fill
+- RSVPs or confirmations needed
+- Tasks implied by the email context
+
+Output JSON:
+{
+  "todos": [
+    {
+      "text": "Clear, actionable task description",
+      "source": "From: sender - Subject: email subject",
+      "message_id": "the message_id of the source email",
+      "priority": 1-5,
+      "deadline": "YYYY-MM-DD or null"
+    }
+  ]
+}
+
+Rules:
+- Only include genuinely actionable items (not FYI or newsletters)
+- Write tasks as clear imperatives (e.g. "Reply to John about budget approval")
+- Sort by priority (1 = most urgent)
+- Limit to 15 most important tasks
+- If no actionable items exist, return an empty todos array"""
+
+
+def extract_todos(emails: list[dict]) -> dict:
+    """Extract actionable to-do items from emails."""
+    if not emails:
+        return {"todos": []}
+
+    email_summaries = []
+    for email_item in emails[:40]:
+        email_summaries.append({
+            "message_id": email_item.get("message_id", ""),
+            "subject": email_item.get("subject", ""),
+            "from": email_item.get("from_name") or email_item.get("from_email", ""),
+            "snippet": email_item.get("snippet", "")[:300],
+            "date": email_item.get("date", ""),
+            "body_preview": (email_item.get("body_preview", "") or "")[:500],
+        })
+
+    user_prompt = f"Extract actionable to-do items from these recent emails:\n{json.dumps(email_summaries, indent=2)}"
+
+    try:
+        result = call_llm_json(TODOS_SYSTEM_PROMPT, user_prompt, max_tokens=2000)
+        todos = result.get("todos", [])
+        for todo_item in todos:
+            message_id = todo_item.get("message_id")
+            if message_id:
+                todo_item["link"] = f"https://mail.google.com/mail/u/0/#inbox/{message_id}"
+        return {"todos": todos}
+    except Exception:
+        logger.exception("Todo extraction failed")
+        return {"todos": []}
+
+
+# ---------------------------------------------------------------------------
+# Daily report generation
+# ---------------------------------------------------------------------------
+
+DAILY_REPORT_SYSTEM_PROMPT = """You are a daily email report assistant. Given categorized emails and a list of todo items, generate a comprehensive end-of-day summary.
+
+Output JSON:
+{
+  "summary": "2-3 sentence overview of the day's email activity",
+  "email_stats": {
+    "total": 0,
+    "needs_reply": 0,
+    "urgent": 0,
+    "meeting_related": 0,
+    "newsletter": 0,
+    "subscription": 0,
+    "informational": 0
+  },
+  "highlights": [
+    {
+      "subject": "email subject",
+      "from": "sender",
+      "gist": "1 sentence summary",
+      "priority": "high|medium|low"
+    }
+  ],
+  "action_items": {
+    "completed": 0,
+    "pending": 0,
+    "items": [
+      {
+        "text": "action item description",
+        "status": "completed|pending",
+        "source": "where this came from"
+      }
+    ]
+  },
+  "upcoming": [
+    {
+      "text": "deadline or upcoming event",
+      "date": "YYYY-MM-DD or null",
+      "source": "from which email"
+    }
+  ],
+  "wrap_up": "1-2 sentence motivational or practical closing thought"
+}
+
+Rules:
+- Focus on the most important and actionable items
+- Highlights should be limited to the top 8 most notable emails
+- Action items should combine email-derived tasks and existing todos
+- Upcoming should capture any deadlines or events mentioned in emails
+- Be concise but informative"""
+
+
+def generate_daily_report(categorized_emails: list[dict], todos: list[dict]) -> dict:
+    """Generate a daily report from categorized emails and todos."""
+    if not categorized_emails and not todos:
+        return {
+            "summary": "No emails or tasks to report on today.",
+            "email_stats": {"total": 0, "needs_reply": 0, "urgent": 0, "meeting_related": 0, "newsletter": 0, "subscription": 0, "informational": 0},
+            "highlights": [],
+            "action_items": {"completed": 0, "pending": 0, "items": []},
+            "upcoming": [],
+            "wrap_up": "Nothing on the radar today. Enjoy the quiet!",
+        }
+
+    email_summaries = []
+    for email_item in categorized_emails[:50]:
+        email_summaries.append({
+            "subject": email_item.get("subject", ""),
+            "from": email_item.get("from_name") or email_item.get("from_email", ""),
+            "snippet": email_item.get("snippet", "")[:300],
+            "date": email_item.get("date", ""),
+            "category": email_item.get("category", "informational"),
+            "priority": email_item.get("priority", 5),
+        })
+
+    todo_summaries = []
+    for todo_item in todos[:30]:
+        todo_summaries.append({
+            "text": todo_item.get("text", ""),
+            "completed": todo_item.get("completed", False),
+            "source": todo_item.get("source", ""),
+            "priority": todo_item.get("priority", 3),
+        })
+
+    user_prompt = (
+        f"Generate a daily report.\n\n"
+        f"Categorized emails ({len(email_summaries)}):\n{json.dumps(email_summaries, indent=2)}\n\n"
+        f"Current todos ({len(todo_summaries)}):\n{json.dumps(todo_summaries, indent=2)}"
+    )
+
+    try:
+        return call_llm_json(DAILY_REPORT_SYSTEM_PROMPT, user_prompt, max_tokens=3000)
+    except Exception:
+        logger.exception("Daily report generation failed")
+        return {
+            "summary": "Failed to generate daily report.",
+            "email_stats": {"total": 0, "needs_reply": 0, "urgent": 0, "meeting_related": 0, "newsletter": 0, "subscription": 0, "informational": 0},
+            "highlights": [],
+            "action_items": {"completed": 0, "pending": 0, "items": []},
+            "upcoming": [],
+            "wrap_up": "",
+        }
+
+
 def detect_subscriptions(emails: list[dict]) -> list[dict]:
     """Detect subscriptions and billing from emails."""
     if not emails:

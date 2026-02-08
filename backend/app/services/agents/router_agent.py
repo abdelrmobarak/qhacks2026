@@ -16,7 +16,9 @@ Available actions:
 - track_subscriptions: Scan for subscriptions and billing information
 - summarize_thread: Summarize email conversations/threads
 - add_to_calendar: Create a calendar event (extract title, date, time, duration from the command)
+- generate_todos: Extract actionable to-do items and tasks from recent emails
 - fetch_recent: Fetch and categorize recent emails
+- search_emails: Semantic search across emails to find messages about a topic, sentiment, person, or concept
 
 Output JSON:
 {
@@ -33,6 +35,11 @@ For add_to_calendar, extract these parameters:
   "start_time": "HH:MM",
   "end_time": "HH:MM",
   "description": "optional description"
+}
+
+For search_emails, extract these parameters:
+{
+  "query": "the search query describing what emails to find"
 }
 
 If the command is unclear, set confidence < 0.5 and action to "unknown"."""

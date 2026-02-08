@@ -64,7 +64,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if redis is None:
             return await call_next(request)
 
-        # Skip rate limiting for health checks and static files
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
         if request.url.path in ("/health", "/", "/docs", "/openapi.json"):
             return await call_next(request)
 

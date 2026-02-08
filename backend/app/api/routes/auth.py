@@ -3,9 +3,9 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 import logging
 from typing import Annotated, Optional
-from uuid import UUID
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, Response
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,14 +20,12 @@ from app.core.security import (
     verify_session_token,
 )
 from app.db import get_db
-from app.db.models import Entitlement, Session, Snapshot, SnapshotStatus, User
-from app.queue import get_queue
+from app.db.models import Session, User
 from app.services.google_oauth import (
     build_auth_url,
     exchange_code_for_tokens,
     get_user_info,
 )
-from app.services.preflight import check_coverage
 
 router = APIRouter()
 settings = load_settings()
@@ -44,7 +42,6 @@ class AuthStartResponse(BaseModel):
 class AuthStatusResponse(BaseModel):
     authenticated: bool
     user: Optional[dict] = None
-    snapshot_status: Optional[str] = None
 
 
 class LogoutResponse(BaseModel):
@@ -166,49 +163,6 @@ async def google_callback(
     user.token_expiry = datetime.now(timezone.utc) + timedelta(seconds=tokens.expires_in)
     await db.flush()
 
-    # Check for existing active snapshot
-    result = await db.execute(
-        select(Snapshot)
-        .where(Snapshot.user_id == user.id)
-        .where(Snapshot.status.in_([SnapshotStatus.queued, SnapshotStatus.running, SnapshotStatus.done]))
-        .order_by(Snapshot.created_at.desc())
-    )
-    existing_snapshot = result.scalar_one_or_none()
-
-    # Only create a new snapshot if user doesn't have a done/active one
-    snapshot: Optional[Snapshot] = None
-    if not existing_snapshot or existing_snapshot.status == SnapshotStatus.failed:
-        # Run preflight coverage check (informational only; never blocks OAuth)
-        preflight = await check_coverage(tokens.access_token)
-
-        # Calculate snapshot window (last 90 days)
-        window_end = datetime.now(timezone.utc)
-        window_start = window_end - timedelta(days=settings.snapshot_window_days)
-
-        # Create snapshot with encrypted tokens
-        snapshot = Snapshot(
-            user_id=user.id,
-            window_start=window_start,
-            window_end=window_end,
-            status=SnapshotStatus.queued,
-            access_token_encrypted=encrypt_token(tokens.access_token),
-            refresh_token_encrypted=(
-                encrypt_token(tokens.refresh_token) if tokens.refresh_token else None
-            ),
-            token_expiry=datetime.now(timezone.utc) + timedelta(seconds=tokens.expires_in),
-            progress_counts={
-                "preflight_emails": preflight.email_count,
-                "preflight_events": preflight.event_count,
-                "preflight_passed": 1 if preflight.passed else 0,
-            },
-        )
-        db.add(snapshot)
-        await db.flush()
-
-        # Create default entitlement (1 free story)
-        entitlement = Entitlement(snapshot_id=snapshot.id, unlocked_story_count=1)
-        db.add(entitlement)
-
     # Create session
     session = Session(
         user_id=user.id,
@@ -216,17 +170,6 @@ async def google_callback(
     )
     db.add(session)
     await db.commit()
-
-    # Enqueue ingestion job AFTER commit so the worker can see the snapshot row.
-    if snapshot is not None:
-        queue = get_queue()
-        job = queue.enqueue(
-            "app.jobs.ingest_snapshot.ingest_snapshot",
-            str(snapshot.id),
-            job_timeout=1800,  # 30 minutes
-        )
-        snapshot.ingest_job_id = job.id
-        await db.commit()
 
     # Set session cookie
     session_token = create_session_token(session.id, settings.session_secret)
@@ -239,42 +182,26 @@ async def google_callback(
         max_age=settings.session_max_age_seconds,
     )
 
-    # Redirect to frontend
-    frontend_url = settings.cors_origins[0] if settings.cors_origins else "http://localhost:3000"
-    response.status_code = 302
-    response.headers["Location"] = f"{frontend_url}/wrapped"
-
-    return {"status": "success", "redirect": f"{frontend_url}/wrapped"}
+    deep_link = f"saturdai://auth/success?token={session_token}"
+    return HTMLResponse(
+        content="<html><body style='font-family:system-ui;display:flex;justify-content:center;align-items:center;height:100vh;margin:0'>"
+        "<p>Sign-in complete. Redirecting to app…</p></body>"
+        f"<script>window.location.href='{deep_link}'</script></html>",
+        headers={"set-cookie": response.headers.get("set-cookie", "")},
+    )
 
 
 @router.get("/status", response_model=AuthStatusResponse)
 async def auth_status(
-    db: Annotated[AsyncSession, Depends(get_db)],
     user: Annotated[Optional[User], Depends(get_current_user)],
 ) -> AuthStatusResponse:
-    """Check authentication status and snapshot status."""
+    """Check authentication status."""
     if not user:
         return AuthStatusResponse(authenticated=False)
-
-    # Get latest snapshot
-    snapshot: Optional[Snapshot] = None
-    try:
-        # Ensure at most one row is returned.
-        result = await db.execute(
-            select(Snapshot)
-            .where(Snapshot.user_id == user.id)
-            .order_by(Snapshot.created_at.desc())
-            .limit(1)
-        )
-        snapshot = result.scalar_one_or_none()
-    except Exception:
-        logger.exception("Failed to load snapshot for auth status")
-        snapshot = None
 
     return AuthStatusResponse(
         authenticated=True,
         user={"id": str(user.id), "email": user.email, "name": user.name},
-        snapshot_status=snapshot.status.value if snapshot else None,
     )
 
 

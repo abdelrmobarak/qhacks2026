@@ -1,7 +1,17 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
-import { join } from 'path'
+import { app, shell, BrowserWindow, ipcMain, session } from 'electron'
+import path, { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+
+const PROTOCOL = 'saturdai'
+
+if (process.defaultApp) {
+  if (process.argv.length >= 2) {
+    app.setAsDefaultProtocolClient(PROTOCOL, process.execPath, [path.resolve(process.argv[1])])
+  }
+} else {
+  app.setAsDefaultProtocolClient(PROTOCOL)
+}
 
 let mainWindow: BrowserWindow | null = null
 
@@ -9,12 +19,17 @@ function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1100,
     height: 750,
+    minWidth: 1100,
+    minHeight: 750,
     show: false,
     autoHideMenuBar: true,
+    titleBarStyle: 'hiddenInset',
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
+      sandbox: false,
+      webSecurity: !is.dev,
+      zoomFactor: 1.1
     }
   })
 
@@ -137,6 +152,28 @@ app.whenReady().then(() => {
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
+})
+
+app.on('open-url', async (_event, url) => {
+  if (!url.startsWith(`${PROTOCOL}://auth/success`)) return
+  if (!mainWindow) return
+
+  const parsedUrl = new URL(url)
+  const token = parsedUrl.searchParams.get('token')
+
+  if (token) {
+    await session.defaultSession.cookies.set({
+      url: 'http://localhost:8000',
+      name: 'sandbox_session',
+      value: token,
+      path: '/',
+      httpOnly: true
+    })
+  }
+
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.focus()
+  mainWindow.webContents.send('auth:completed')
 })
 
 app.on('window-all-closed', () => {

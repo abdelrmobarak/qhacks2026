@@ -1,0 +1,20 @@
+{
+  "id": "saturdai-bridge",
+  "name": "SaturdAI Bridge",
+  "description": "Calls the local SaturdAI backend OpenClaw bridge endpoints.",
+  "version": "0.1.0",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "baseUrl": { "type": "string", "default": "http://127.0.0.1:8000" },
+      "apiKey": { "type": "string" },
+      "timeoutMs": { "type": "number", "default": 15000 }
+    },
+    "required": ["baseUrl", "apiKey"]
+  },
+  "uiHints": {
+    "apiKey": { "label": "OPENCLAW_API_KEY", "sensitive": true },
+    "baseUrl": { "label": "Backend base URL" }
+  }
+}
