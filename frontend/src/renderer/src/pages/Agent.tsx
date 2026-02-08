@@ -1,4 +1,5 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   ArrowUp,
   Microphone,
@@ -19,8 +20,17 @@ import { PromptSuggestion } from '@/components/ui/prompt-suggestion'
 import { TextShimmer } from '@/components/ui/text-shimmer'
 import { Markdown } from '@/components/ui/markdown'
 import { Logo } from '@/components/logo'
-import { useAgent } from '../hooks/use-agent'
-import { type AgentStep } from '../lib/api'
+import { api, type AgentStep, type AgentSource, type ChatMessage } from '../lib/api'
+
+interface ConversationTurn {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  timestamp: Date
+  steps?: AgentStep[]
+  sources?: AgentSource[]
+  isPending?: boolean
+}
 
 const THINKING_STEPS: AgentStep[] = [
   { label: 'Understanding your request...' },
@@ -72,16 +82,6 @@ const ThinkingSteps = () => {
       </AnimatePresence>
     </div>
   )
-}
-
-interface ConversationTurn {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  timestamp: Date
-  steps?: AgentStep[]
-  sources?: { title: string; description: string; href: string }[]
-  isPending?: boolean
 }
 
 interface AssistantMessageProps {
@@ -139,18 +139,15 @@ const AssistantMessage = ({ turn }: AssistantMessageProps) => {
 }
 
 const Agent = () => {
-  const {
-    conversation,
-    isProcessing,
-    command,
-    setCommand,
-    sendCommand,
-    startRecording,
-    stopRecording,
-    isRecording,
-  } = useAgent()
-
+  const [command, setCommand] = useState('')
+  const [conversation, setConversation] = useState<ConversationTurn[]>([])
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([])
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [isRecording, setIsRecording] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+  const pendingTurnIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -158,9 +155,138 @@ const Agent = () => {
     }
   }, [conversation])
 
+  const addTurn = useCallback((turn: Omit<ConversationTurn, 'id' | 'timestamp'>) => {
+    const turnId = crypto.randomUUID()
+    setConversation((previous) => [
+      ...previous,
+      { ...turn, id: turnId, timestamp: new Date() },
+    ])
+    return turnId
+  }, [])
+
+  const replacePendingTurn = useCallback((turnId: string, data: Partial<ConversationTurn>) => {
+    setConversation((previous) =>
+      previous.map((turn) =>
+        turn.id === turnId ? { ...turn, ...data, isPending: false } : turn
+      )
+    )
+  }, [])
+
+  const sendCommand = useCallback(async (message: string) => {
+    if (!message.trim() || isProcessing) return
+
+    setCommand('')
+    addTurn({ role: 'user', content: message.trim() })
+
+    const pendingId = addTurn({
+      role: 'assistant',
+      content: '',
+      isPending: true,
+    })
+    pendingTurnIdRef.current = pendingId
+    setIsProcessing(true)
+
+    try {
+      const response = await api.sendChat(message.trim(), chatHistory)
+      setChatHistory(response.conversation)
+      replacePendingTurn(pendingId, {
+        content: response.response,
+      })
+    } catch (sendError) {
+      replacePendingTurn(pendingId, {
+        content: sendError instanceof Error ? sendError.message : 'Something went wrong.',
+      })
+    } finally {
+      pendingTurnIdRef.current = null
+      setIsProcessing(false)
+    }
+  }, [isProcessing, addTurn, replacePendingTurn, chatHistory])
+
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialQuery = useMemo(() => searchParams.get('q'), [])
+  const didConsumeQuery = useRef(false)
+
+  useEffect(() => {
+    if (initialQuery && !didConsumeQuery.current) {
+      didConsumeQuery.current = true
+      setSearchParams({}, { replace: true })
+      sendCommand(initialQuery)
+    }
+  }, [initialQuery, sendCommand, setSearchParams])
+
   const handleSubmit = useCallback(() => {
     sendCommand(command)
   }, [command, sendCommand])
+
+  const handleStartRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mediaRecorder = new MediaRecorder(stream)
+      mediaRecorderRef.current = mediaRecorder
+      chunksRef.current = []
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunksRef.current.push(event.data)
+        }
+      }
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(chunksRef.current, { type: 'audio/wav' })
+        stream.getTracks().forEach((track) => track.stop())
+
+        addTurn({ role: 'user', content: '(voice command)' })
+
+        const pendingId = addTurn({
+          role: 'assistant',
+          content: '',
+          isPending: true,
+        })
+        pendingTurnIdRef.current = pendingId
+        setIsProcessing(true)
+
+        try {
+          const response = await api.sendVoiceCommand(audioBlob)
+          if (response.transcript) {
+            setConversation((previous) => {
+              const updated = [...previous]
+              const lastUserTurn = [...updated].reverse().find(
+                (turn) => turn.role === 'user' && turn.id !== pendingId
+              )
+              if (lastUserTurn) {
+                lastUserTurn.content = response.transcript || '(voice command)'
+              }
+              return updated
+            })
+          }
+          replacePendingTurn(pendingId, {
+            content: response.message,
+            steps: response.steps,
+            sources: response.sources,
+          })
+        } catch (voiceError) {
+          replacePendingTurn(pendingId, {
+            content: voiceError instanceof Error ? voiceError.message : 'Voice command failed.',
+          })
+        } finally {
+          pendingTurnIdRef.current = null
+          setIsProcessing(false)
+        }
+      }
+
+      mediaRecorder.start()
+      setIsRecording(true)
+    } catch {
+      // microphone permission denied
+    }
+  }, [addTurn, replacePendingTurn])
+
+  const handleStopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop()
+      setIsRecording(false)
+    }
+  }, [isRecording])
 
   const hasConversation = conversation.length > 0
 
@@ -229,7 +355,7 @@ const Agent = () => {
                 variant={isRecording ? 'destructive' : 'ghost'}
                 size="icon-sm"
                 className="rounded-full"
-                onClick={isRecording ? stopRecording : startRecording}
+                onClick={isRecording ? handleStopRecording : handleStartRecording}
                 disabled={isProcessing}
               >
                 {isRecording ? <MicrophoneSlash /> : <Microphone />}

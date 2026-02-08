@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, session, Notification } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, session } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -67,6 +67,17 @@ app.whenReady().then(() => {
           webPreferences: { nodeIntegration: false, contextIsolation: true }
         })
 
+        // HACK: Strip Electron from user agent so Google doesn't block OAuth as an "embedded browser"
+        const cleanUserAgent = authWindow.webContents
+          .getUserAgent()
+          .replace(/\s*Electron\/\S+/g, '')
+        authWindow.webContents.setUserAgent(cleanUserAgent)
+
+        authWindow.webContents.setWindowOpenHandler((details) => {
+          authWindow.loadURL(details.url)
+          return { action: 'deny' }
+        })
+
         let resolved = false
         const finish = async (url: string): Promise<void> => {
           if (resolved) return
@@ -92,6 +103,7 @@ app.whenReady().then(() => {
 
         authWindow.webContents.on('will-redirect', (_event, url) => finish(url))
         authWindow.webContents.on('will-navigate', (_event, url) => finish(url))
+        authWindow.webContents.on('did-navigate', (_event, url) => finish(url))
 
         authWindow.on('closed', () => {
           if (!resolved) {
@@ -105,18 +117,6 @@ app.whenReady().then(() => {
     } catch (err) {
       return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
     }
-  })
-
-  ipcMain.handle('notification:show', (_event, title: string, body: string) => {
-    if (!Notification.isSupported()) return
-    const notification = new Notification({ title, body })
-    notification.on('click', () => {
-      if (mainWindow) {
-        if (mainWindow.isMinimized()) mainWindow.restore()
-        mainWindow.focus()
-      }
-    })
-    notification.show()
   })
 
   // Open URLs in system browser (for Stripe checkout etc.)

@@ -18,7 +18,7 @@
         "src/renderer/src/*"
       ],
       "@/*": [
-        "src/*"
+        "src/renderer/src/*"
       ]
     }
   }

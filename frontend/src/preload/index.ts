@@ -10,9 +10,6 @@ const api = {
     const listener = (): void => callback()
     ipcRenderer.on('auth:completed', listener)
     return () => ipcRenderer.removeListener('auth:completed', listener)
-  },
-  showNotification: (title: string, body: string): void => {
-    ipcRenderer.invoke('notification:show', title, body)
   }
 }
 

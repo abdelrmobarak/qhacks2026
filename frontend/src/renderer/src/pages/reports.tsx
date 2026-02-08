@@ -1,3 +1,4 @@
+import { useState, useCallback, useEffect } from 'react'
 import {
   Notebook,
   ArrowClockwise,
@@ -22,7 +23,7 @@ import {
   EmptyDescription,
 } from '@/components/ui/empty'
 import { Spinner } from '@/components/ui/spinner'
-import { useDataCache } from '../hooks/use-data-cache'
+import { api, type DailyReport } from '../lib/api'
 
 const CATEGORY_LABELS: Record<string, string> = {
   needs_reply: 'Needs Reply',
@@ -40,14 +41,40 @@ const PRIORITY_VARIANT: Record<string, 'destructive' | 'default' | 'secondary'> 
 }
 
 const Reports = () => {
-  const {
-    report,
-    isReportLoading,
-    reportError,
-    regenerateReport,
-  } = useDataCache()
+  const [report, setReport] = useState<DailyReport | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isRegenerating, setIsRegenerating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  if (isReportLoading) {
+  const loadCachedReport = useCallback(async () => {
+    try {
+      const data = await api.getDailyReport()
+      setReport(data)
+    } catch {
+      // HACK: 404 or empty cache is expected on first visit, just leave report as null
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadCachedReport()
+  }, [loadCachedReport])
+
+  const regenerateReport = useCallback(async () => {
+    setIsRegenerating(true)
+    setError(null)
+    try {
+      const data = await api.getDailyReport(true)
+      setReport(data)
+    } catch (generateError) {
+      setError(generateError instanceof Error ? generateError.message : 'Failed to generate report')
+    } finally {
+      setIsRegenerating(false)
+    }
+  }, [])
+
+  if (isLoading) {
     return (
       <div className="absolute inset-0 flex items-center justify-center">
         <Spinner className="size-6" />
@@ -55,7 +82,7 @@ const Reports = () => {
     )
   }
 
-  if (reportError && !report) {
+  if (error && !report) {
     return (
       <Empty className="py-16">
         <EmptyHeader>
@@ -63,9 +90,9 @@ const Reports = () => {
             <WarningCircle />
           </EmptyMedia>
           <EmptyTitle>Failed to generate report</EmptyTitle>
-          <EmptyDescription>{reportError}</EmptyDescription>
+          <EmptyDescription>{error}</EmptyDescription>
         </EmptyHeader>
-        <Button variant="outline" size="sm" onClick={regenerateReport} disabled={isReportLoading}>
+        <Button variant="outline" size="sm" onClick={regenerateReport} disabled={isRegenerating}>
           Retry
         </Button>
       </Empty>
@@ -84,8 +111,8 @@ const Reports = () => {
             Generate an AI-powered summary of your day: email stats, highlights, action items, and upcoming deadlines.
           </EmptyDescription>
         </EmptyHeader>
-        <Button variant="outline" size="sm" onClick={regenerateReport} disabled={isReportLoading} className="gap-1.5">
-          {isReportLoading ? <CircleNotch className="size-3 animate-spin" /> : <Lightning className="size-3" />}
+        <Button variant="outline" size="sm" onClick={regenerateReport} disabled={isRegenerating} className="gap-1.5">
+          {isRegenerating ? <CircleNotch className="size-3 animate-spin" /> : <Lightning className="size-3" />}
           Generate Today's Report
         </Button>
       </Empty>
@@ -103,13 +130,13 @@ const Reports = () => {
         <span className="text-xs text-muted-foreground">
           {emailStats.total} emails analyzed
         </span>
-        <Button variant="ghost" size="icon-sm" onClick={regenerateReport} disabled={isReportLoading}>
-          {isReportLoading ? <CircleNotch className="animate-spin" /> : <ArrowClockwise />}
+        <Button variant="ghost" size="icon-sm" onClick={regenerateReport} disabled={isRegenerating}>
+          {isRegenerating ? <CircleNotch className="animate-spin" /> : <ArrowClockwise />}
         </Button>
       </div>
 
-      {reportError && (
-        <div className="text-xs text-destructive">{reportError}</div>
+      {error && (
+        <div className="text-xs text-destructive">{error}</div>
       )}
 
       <Separator />
