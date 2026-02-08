@@ -154,6 +154,30 @@ export interface DailyReport {
   wrap_up: string
 }
 
+export interface NetworkGraphNode {
+  id: string
+  name: string
+  email: string
+  type: 'you' | 'person'
+  email_count: number
+  thread_count: number
+  domain?: string
+  description?: string
+}
+
+export interface NetworkGraphEdge {
+  source: string
+  target: string
+  weight: number
+}
+
+export interface NetworkGraphResponse {
+  status: string
+  nodes: NetworkGraphNode[]
+  edges: NetworkGraphEdge[]
+  total_emails: number
+}
+
 export const api = {
   getAuthStatus: async (): Promise<AuthStatusResponse> => {
     return fetchAPI<AuthStatusResponse>('/auth/status')
@@ -259,5 +283,10 @@ export const api = {
 
   getDailyReport: async (): Promise<DailyReport> => {
     return fetchAPI<DailyReport>('/reports/daily')
-  }
+  },
+
+  getNetworkGraph: async (): Promise<NetworkGraphResponse> => {
+    return fetchAPI<NetworkGraphResponse>('/network/graph')
+  },
+
 }

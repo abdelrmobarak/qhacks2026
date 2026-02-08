@@ -10,6 +10,7 @@ import Subscriptions from './pages/Subscriptions'
 import Todos from './pages/Todos'
 import Calendar from './pages/Calendar'
 import Agent from './pages/Agent'
+import Network from './pages/network'
 import Reports from './pages/reports'
 import Settings from './pages/settings'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -52,6 +53,7 @@ const App = () => {
           <Route path="/todos" element={<Todos />} />
           <Route path="/calendar" element={<Calendar />} />
           <Route path="/agent" element={<Agent />} />
+          <Route path="/network" element={<Network />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

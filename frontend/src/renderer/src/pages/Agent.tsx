@@ -234,7 +234,7 @@ const Agent = () => {
   }, [conversation])
 
   const addTurn = useCallback((turn: Omit<ConversationTurn, 'id' | 'timestamp'>) => {
-    const turnId = `turn-${Date.now()}`
+    const turnId = crypto.randomUUID()
     setConversation((previous) => [
       ...previous,
       { ...turn, id: turnId, timestamp: new Date() },
