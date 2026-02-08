@@ -1,4 +1,3 @@
-import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Tray,
@@ -11,7 +10,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
-import { api, type TLDRDigest } from '../lib/api'
+import { useDataCache } from '../hooks/use-data-cache'
 
 interface QuickAction {
   label: string
@@ -28,24 +27,7 @@ const quickActions: QuickAction[] = [
 
 const Dashboard = () => {
   const navigate = useNavigate()
-  const [digest, setDigest] = useState<TLDRDigest | null>(null)
-  const [isLoadingDigest, setIsLoadingDigest] = useState(true)
-  const [digestError, setDigestError] = useState<string | null>(null)
-
-  const loadDigest = useCallback(async () => {
-    try {
-      const data = await api.getTLDR()
-      setDigest(data)
-    } catch (error) {
-      setDigestError(error instanceof Error ? error.message : 'Failed to load digest')
-    } finally {
-      setIsLoadingDigest(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    loadDigest()
-  }, [loadDigest])
+  const { digest, isDigestLoading, digestError } = useDataCache()
 
   return (
     <div className="flex flex-col gap-6 max-w-screen-lg mx-auto">
@@ -83,7 +65,7 @@ const Dashboard = () => {
             <CardDescription>AI-generated summary of your recent emails</CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoadingDigest ? (
+            {isDigestLoading ? (
               <div className="flex flex-col gap-3">
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-4 w-3/4" />

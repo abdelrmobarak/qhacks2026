@@ -218,11 +218,12 @@ Rules:
 - Write tasks as clear imperatives (e.g. "Reply to John about budget approval")
 - Sort by priority (1 = most urgent)
 - Limit to 15 most important tasks
-- If no actionable items exist, return an empty todos array"""
+- If no actionable items exist, return an empty todos array
+- If existing tasks are provided, do NOT create duplicates or near-duplicates of them"""
 
 
-def extract_todos(emails: list[dict]) -> dict:
-    """Extract actionable to-do items from emails."""
+def extract_todos(emails: list[dict], existing_todos: list[str] | None = None) -> dict:
+    """Extract actionable to-do items from emails, skipping duplicates of existing todos."""
     if not emails:
         return {"todos": []}
 
@@ -238,6 +239,9 @@ def extract_todos(emails: list[dict]) -> dict:
         })
 
     user_prompt = f"Extract actionable to-do items from these recent emails:\n{json.dumps(email_summaries, indent=2)}"
+
+    if existing_todos:
+        user_prompt += f"\n\nThe user already has these tasks — do NOT create duplicates or near-duplicates:\n{json.dumps(existing_todos)}"
 
     try:
         result = call_llm_json(TODOS_SYSTEM_PROMPT, user_prompt, max_tokens=2000)

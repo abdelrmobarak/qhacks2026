@@ -97,6 +97,15 @@ export interface AgentResponse {
   sources?: AgentSource[]
 }
 
+export interface VoiceChatResponse {
+  transcript: string
+  response_text: string
+  audio_base64: string
+  audio_format: string
+  duration_ms: number
+  tool_calls: Record<string, unknown>[]
+}
+
 export interface CalendarEventResponse {
   created: boolean
   event_id: string
@@ -247,6 +256,21 @@ export const api = {
     const formData = new FormData()
     formData.append('file', audioBlob, 'recording.wav')
     const response = await fetch(`${API_URL}/agent/voice`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData
+    })
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      throw new Error(error.detail || `HTTP ${response.status}`)
+    }
+    return response.json()
+  },
+
+  sendVoiceChatCommand: async (audioBlob: Blob): Promise<VoiceChatResponse> => {
+    const formData = new FormData()
+    formData.append('file', audioBlob, 'recording.wav')
+    const response = await fetch(`${API_URL}/agent/voice-chat`, {
       method: 'POST',
       credentials: 'include',
       body: formData

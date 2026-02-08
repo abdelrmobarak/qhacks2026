@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import {
   EnvelopeSimple,
   ArrowBendUpLeft,
@@ -196,7 +196,6 @@ const Inbox = () => {
   useEffect(() => {
     loadEmails()
   }, [loadEmails])
-
 
   const filteredEmails =
     filter === ALL_FILTER ? emails : emails.filter((email) => email.category === filter)

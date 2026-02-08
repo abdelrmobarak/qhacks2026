@@ -351,6 +351,14 @@ def _call_openai(
             raise
 
 
+def _openrouter_provider_prefs() -> dict[str, Any]:
+    """Return OpenRouter provider routing preferences optimized for speed."""
+    return {
+        "order": ["Google"],
+        "allow_fallbacks": True,
+    }
+
+
 def _call_openrouter(
     system_prompt: str,
     user_prompt: str,
@@ -370,6 +378,7 @@ def _call_openrouter(
         ],
         "max_tokens": max_tokens,
         "temperature": 0,
+        "provider": _openrouter_provider_prefs(),
     }
 
     if json_mode:
@@ -552,6 +561,10 @@ def _chat_completions_with_tools(
         "max_tokens": max_tokens,
         "temperature": 0,
     }
+
+    provider = (settings.llm_provider or "openai").lower()
+    if provider == "openrouter":
+        request_body["provider"] = _openrouter_provider_prefs()
 
     with httpx.Client(timeout=120) as client:
         response = client.post(url, headers=headers, json=request_body)
