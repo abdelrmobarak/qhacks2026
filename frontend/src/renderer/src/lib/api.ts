@@ -97,6 +97,17 @@ export interface AgentResponse {
   sources?: AgentSource[]
 }
 
+export interface ChatMessage {
+  role: string
+  content: string
+}
+
+export interface ChatResponse {
+  response: string
+  tool_calls: Record<string, unknown>[]
+  conversation: ChatMessage[]
+}
+
 export interface CalendarEventResponse {
   created: boolean
   event_id: string
@@ -240,6 +251,13 @@ export const api = {
     return fetchAPI<AgentResponse>('/agent/command', {
       method: 'POST',
       body: JSON.stringify({ command })
+    })
+  },
+
+  sendChat: async (message: string, conversationHistory?: ChatMessage[]): Promise<ChatResponse> => {
+    return fetchAPI<ChatResponse>('/agent/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message, conversation_history: conversationHistory })
     })
   },
 

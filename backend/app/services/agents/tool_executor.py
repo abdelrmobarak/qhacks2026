@@ -6,7 +6,12 @@ import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
+from uuid import UUID as UUIDType
 
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.models import Todo
 from app.services.gmail import fetch_messages, list_messages, send_reply
 from app.services.calendar import create_event, list_events
 from app.services.agents.email_agent import (
@@ -214,6 +219,42 @@ async def _execute_get_subscriptions(arguments: dict, access_token: str) -> dict
     }
 
 
+async def _execute_get_todos(
+    arguments: dict, access_token: str, db: AsyncSession | None = None, user_id: UUIDType | None = None
+) -> dict:
+    if db is None or user_id is None:
+        return {"success": False, "error": "Todos are unavailable right now."}
+
+    include_completed = arguments.get("include_completed", True)
+    query = select(Todo).where(Todo.user_id == user_id).order_by(Todo.priority, Todo.created_at.desc())
+    if not include_completed:
+        query = query.where(Todo.completed == False)
+
+    result = await db.execute(query)
+    todos = [
+        {
+            "text": todo.text,
+            "completed": todo.completed,
+            "priority": todo.priority,
+            "source": todo.source,
+        }
+        for todo in result.scalars().all()
+    ]
+
+    completed_count = sum(1 for todo in todos if todo["completed"])
+    pending_count = len(todos) - completed_count
+
+    return {
+        "success": True,
+        "data": {
+            "todos": todos,
+            "count": len(todos),
+            "completed": completed_count,
+            "pending": pending_count,
+        },
+    }
+
+
 _TOOL_EXECUTORS: dict[str, Any] = {
     "send_email": _execute_send_email,
     "search_emails": _execute_search_emails,
@@ -223,9 +264,27 @@ _TOOL_EXECUTORS: dict[str, Any] = {
     "get_subscriptions": _execute_get_subscriptions,
 }
 
+_DB_TOOL_EXECUTORS: dict[str, Any] = {
+    "get_todos": _execute_get_todos,
+}
 
-async def execute_tool(tool_name: str, arguments: dict, access_token: str) -> dict:
+
+async def execute_tool(
+    tool_name: str,
+    arguments: dict,
+    access_token: str,
+    db: AsyncSession | None = None,
+    user_id: UUIDType | None = None,
+) -> dict:
     """Execute a tool by name and return the result."""
+    db_executor = _DB_TOOL_EXECUTORS.get(tool_name)
+    if db_executor:
+        try:
+            return await db_executor(arguments, access_token, db=db, user_id=user_id)
+        except Exception as execution_error:
+            logger.exception("Tool execution failed: %s", tool_name)
+            return {"success": False, "error": str(execution_error)}
+
     executor = _TOOL_EXECUTORS.get(tool_name)
     if not executor:
         return {"success": False, "error": f"Unknown tool: {tool_name}"}

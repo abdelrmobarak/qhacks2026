@@ -261,7 +261,7 @@ async def agent_command(
     access_token = await get_valid_access_token(user, db)
 
     try:
-        agent_response = await run_agent(request.command, access_token)
+        agent_response = await run_agent(request.command, access_token, db=db, user_id=user.id)
         return {
             "action": "function_calling",
             "result": {"tool_calls": agent_response.tool_calls},
@@ -305,6 +305,8 @@ async def agent_chat(
         request.message,
         access_token,
         conversation_history=request.conversation_history,
+        db=db,
+        user_id=user.id,
     )
 
     return {

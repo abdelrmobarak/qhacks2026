@@ -131,6 +131,23 @@ TOOL_DEFINITIONS: list[dict] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_todos",
+            "description": "Get the user's to-do list including task text, completion status, priority, and source. Use this to check what tasks the user has, which are completed, and which are still pending.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "include_completed": {
+                        "type": "boolean",
+                        "description": "Whether to include completed todos. Defaults to true.",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
 ]
 
 TOOL_NAMES: set[str] = {
