@@ -6,6 +6,7 @@ import {
   FunnelSimple,
   ArrowClockwise,
 } from '@phosphor-icons/react'
+import { motion } from 'motion/react'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -14,6 +15,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Spinner } from '@/components/ui/spinner'
 import {
   Empty,
   EmptyHeader,
@@ -22,6 +25,7 @@ import {
   EmptyDescription,
 } from '@/components/ui/empty'
 import { api, type CategorizedEmail, type ReplySuggestion } from '../lib/api'
+import { toast } from 'sonner'
 
 const CATEGORY_LABELS: Record<string, string> = {
   needs_reply: 'Needs Reply',
@@ -41,16 +45,150 @@ const CATEGORY_VARIANTS: Record<string, 'default' | 'secondary' | 'destructive' 
 
 const ALL_FILTER = 'all'
 
+interface GeneratedReply {
+  messageId: string
+  email: CategorizedEmail
+  suggestion: ReplySuggestion
+  editedBody: string
+  status: 'generated' | 'edited' | 'sending' | 'sent' | 'failed'
+  error?: string
+}
+
+interface BulkGenerationProgress {
+  current: number
+  total: number
+}
+
+interface ReplyReviewPanelProps {
+  reply: GeneratedReply
+  onEdit: (newBody: string) => void
+  onSend: () => void
+  onSkip: () => void
+}
+
+const ReplyReviewPanel = ({ reply, onEdit, onSend, onSkip }: ReplyReviewPanelProps) => {
+  const isSending = reply.status === 'sending'
+  const hasFailed = reply.status === 'failed'
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="flex flex-col gap-4"
+    >
+      <Card className="bg-muted/30 border-muted">
+        <CardContent className="p-5">
+          <div className="flex flex-col gap-3">
+            <div className="flex items-start gap-3">
+              <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <EnvelopeSimple className="size-4 text-primary" />
+              </div>
+              <div className="flex flex-col gap-2 flex-1 min-w-0">
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-semibold">{reply.email.subject}</span>
+                  <span className="text-xs text-muted-foreground">
+                    From: {reply.email.from_name || reply.email.from_email}
+                  </span>
+                </div>
+                <Separator className="my-1" />
+                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-6">
+                  {reply.email.body_preview || reply.email.snippet}
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-2">
+            <div className="size-6 rounded-full bg-primary/10 flex items-center justify-center">
+              <ArrowBendUpLeft className="size-3 text-primary" />
+            </div>
+            <span className="text-sm font-semibold">Your Reply</span>
+          </div>
+          <Badge variant="secondary" className="text-xs">
+            {reply.suggestion.tone}
+          </Badge>
+        </div>
+
+        {hasFailed ? (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+          >
+            <Card className="border-destructive bg-destructive/5">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-2 text-destructive">
+                  <CircleNotch className="size-4 shrink-0 mt-0.5" />
+                  <span className="text-sm">{reply.error || 'Failed to generate reply'}</span>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ) : (
+          <>
+            <Card className="shadow-sm">
+              <CardContent className="p-4">
+                <Textarea
+                  value={reply.editedBody}
+                  onChange={(event) => onEdit(event.target.value)}
+                  className="min-h-48 border-0 focus-visible:ring-0 resize-none text-sm"
+                  disabled={isSending}
+                  placeholder="Edit your reply..."
+                />
+              </CardContent>
+            </Card>
+
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                onClick={onSend}
+                disabled={isSending || !reply.editedBody.trim()}
+                className="flex-1 gap-2"
+              >
+                {isSending ? (
+                  <>
+                    <Spinner className="size-4" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <ArrowBendUpLeft className="size-4" />
+                    Send Reply
+                  </>
+                )}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={onSkip}
+                disabled={isSending}
+                className="gap-2"
+              >
+                Skip
+              </Button>
+            </div>
+          </>
+        )}
+      </div>
+    </motion.div>
+  )
+}
+
 const Inbox = () => {
   const [emails, setEmails] = useState<CategorizedEmail[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selectedEmail, setSelectedEmail] = useState<CategorizedEmail | null>(null)
   const [filter, setFilter] = useState(ALL_FILTER)
-  const [replySuggestion, setReplySuggestion] = useState<ReplySuggestion | null>(null)
-  const [isGeneratingReply, setIsGeneratingReply] = useState(false)
-  const [replyBody, setReplyBody] = useState('')
-  const [isSending, setIsSending] = useState(false)
+  const [selectedEmailIds, setSelectedEmailIds] = useState<Set<string>>(new Set())
+  const [generatedReplies, setGeneratedReplies] = useState<Map<string, GeneratedReply>>(new Map())
+  const [isGeneratingBulk, setIsGeneratingBulk] = useState(false)
+  const [bulkGenerationProgress, setBulkGenerationProgress] = useState<BulkGenerationProgress | null>(null)
+  const [activeReviewEmailId, setActiveReviewEmailId] = useState<string | null>(null)
+  const [approvalMode, setApprovalMode] = useState(false)
 
   const loadEmails = useCallback(async () => {
     setIsLoading(true)
@@ -69,73 +207,258 @@ const Inbox = () => {
     loadEmails()
   }, [loadEmails])
 
+  useEffect(() => {
+    if (emails.length > 0 && filter === ALL_FILTER) {
+      const hasNeedsReply = emails.some((email) => email.category === 'needs_reply')
+      if (hasNeedsReply) {
+        setFilter('needs_reply')
+      }
+    }
+  }, [emails, filter])
+
   const filteredEmails =
     filter === ALL_FILTER ? emails : emails.filter((email) => email.category === filter)
 
   const categories = [ALL_FILTER, ...new Set(emails.map((email) => email.category))]
 
-  const handleGenerateReply = useCallback(async (email: CategorizedEmail) => {
-    setIsGeneratingReply(true)
-    setReplySuggestion(null)
-    try {
-      const result = await api.generateReply(email.message_id)
-      if (result.generated) {
-        setReplySuggestion(result.suggestion)
-        setReplyBody(result.suggestion.body)
-      }
-    } catch {
-      // silent fail
-    } finally {
-      setIsGeneratingReply(false)
-    }
-  }, [])
+  const getNextReplyId = useCallback((currentId: string): string | null => {
+    const ids = Array.from(generatedReplies.keys()).filter(
+      (id) => generatedReplies.get(id)?.status !== 'sent'
+    )
+    const currentIndex = ids.indexOf(currentId)
+    return currentIndex < ids.length - 1 ? ids[currentIndex + 1] : null
+  }, [generatedReplies])
 
-  const handleSendReply = useCallback(async () => {
-    if (!selectedEmail || !replyBody.trim()) return
-    setIsSending(true)
+  const handleSendReply = useCallback(async (messageId: string) => {
+    const reply = generatedReplies.get(messageId)
+    if (!reply || !reply.editedBody.trim()) return
+
+    setGeneratedReplies((previous) => {
+      const updated = new Map(previous)
+      const existing = updated.get(messageId)
+      if (existing) {
+        updated.set(messageId, { ...existing, status: 'sending' })
+      }
+      return updated
+    })
+
     try {
       await api.sendReply({
-        message_id: selectedEmail.message_id,
-        thread_id: selectedEmail.thread_id,
-        to: selectedEmail.from_email,
-        subject: `Re: ${selectedEmail.subject}`,
-        body: replyBody,
+        message_id: reply.email.message_id,
+        thread_id: reply.email.thread_id,
+        to: reply.email.from_email,
+        subject: reply.suggestion.subject,
+        body: reply.editedBody,
       })
-      setReplySuggestion(null)
-      setReplyBody('')
-      setSelectedEmail(null)
-    } catch {
-      // silent fail
-    } finally {
-      setIsSending(false)
-    }
-  }, [selectedEmail, replyBody])
 
-  const handleSelectEmail = useCallback((email: CategorizedEmail) => {
-    setSelectedEmail(email)
-    setReplySuggestion(null)
-    setReplyBody('')
+      setGeneratedReplies((previous) => {
+        const updated = new Map(previous)
+        const existing = updated.get(messageId)
+        if (existing) {
+          updated.set(messageId, { ...existing, status: 'sent' })
+        }
+        return updated
+      })
+
+      toast.success(`Reply sent to ${reply.email.from_email}`)
+
+      const nextId = getNextReplyId(messageId)
+      if (nextId) {
+        setActiveReviewEmailId(nextId)
+      } else {
+        setApprovalMode(false)
+        setActiveReviewEmailId(null)
+      }
+    } catch (sendError) {
+      setGeneratedReplies((previous) => {
+        const updated = new Map(previous)
+        const existing = updated.get(messageId)
+        if (existing) {
+          updated.set(messageId, {
+            ...existing,
+            status: 'failed',
+            error: sendError instanceof Error ? sendError.message : 'Failed to send reply',
+          })
+        }
+        return updated
+      })
+
+      toast.error('Failed to send reply')
+    }
+  }, [generatedReplies, getNextReplyId])
+
+  const handleSkipReply = useCallback((messageId: string) => {
+    const nextId = getNextReplyId(messageId)
+    if (nextId) {
+      setActiveReviewEmailId(nextId)
+    } else {
+      setApprovalMode(false)
+      setActiveReviewEmailId(null)
+    }
+  }, [getNextReplyId])
+
+  const handleEditReply = useCallback((messageId: string, newBody: string) => {
+    setGeneratedReplies((previous) => {
+      const updated = new Map(previous)
+      const existing = updated.get(messageId)
+      if (existing) {
+        updated.set(messageId, {
+          ...existing,
+          editedBody: newBody,
+          status: 'edited',
+        })
+      }
+      return updated
+    })
   }, [])
 
   return (
     <div className="flex gap-4 h-full max-w-screen-xl mx-auto">
       <div className="flex flex-1 flex-col gap-3 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <FunnelSimple className="size-3.5 text-muted-foreground" />
-          {categories.map((category) => (
-            <Button
-              key={category}
-              variant={filter === category ? 'default' : 'outline'}
-              size="xs"
-              onClick={() => setFilter(category)}
-            >
-              {category === ALL_FILTER ? 'All' : CATEGORY_LABELS[category] ?? category}
-            </Button>
-          ))}
-          <Button variant="ghost" size="icon-xs" onClick={loadEmails} className="ml-auto">
-            <ArrowClockwise />
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <FunnelSimple className="size-4 text-muted-foreground" />
+            <span className="text-xs font-medium text-muted-foreground">Filter</span>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {categories.map((category, index) => {
+              const isNeedsReply = category === 'needs_reply'
+              const needsReplyCount = isNeedsReply
+                ? emails.filter((email) => email.category === 'needs_reply').length
+                : 0
+
+              return (
+                <motion.div
+                  key={category}
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2, delay: index * 0.05 }}
+                >
+                  <Button
+                    variant={filter === category ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setFilter(category)}
+                    className={isNeedsReply && needsReplyCount > 0 ? 'gap-2' : ''}
+                  >
+                    {category === ALL_FILTER ? 'All' : CATEGORY_LABELS[category] ?? category}
+                    {isNeedsReply && needsReplyCount > 0 && (
+                      <Badge variant="destructive" className="ml-0.5 px-1.5">
+                        {needsReplyCount}
+                      </Badge>
+                    )}
+                  </Button>
+                </motion.div>
+              )
+            })}
+          </div>
+          <Button variant="ghost" size="icon-sm" onClick={loadEmails} className="ml-auto">
+            <ArrowClockwise className="size-4" />
           </Button>
         </div>
+
+        {selectedEmailIds.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-3 p-3 border border-primary bg-primary/5 shadow-sm"
+          >
+            <div className="flex items-center gap-2">
+              <div className="size-6 rounded-full bg-primary/10 flex items-center justify-center">
+                <span className="text-xs font-semibold text-primary">
+                  {selectedEmailIds.size}
+                </span>
+              </div>
+              <span className="text-xs font-medium">
+                {selectedEmailIds.size === 1 ? 'email' : 'emails'} selected
+              </span>
+            </div>
+            <Separator orientation="vertical" className="h-5" />
+            <motion.div
+              animate={!isGeneratingBulk ? { scale: [1, 1.05, 1] } : {}}
+              transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
+            >
+              <Button
+                variant="default"
+                size="sm"
+                className="gap-2"
+                onClick={() => {
+                const selectedEmails = emails.filter((email) => selectedEmailIds.has(email.message_id))
+                if (selectedEmails.length === 0) return
+
+                setIsGeneratingBulk(true)
+                setBulkGenerationProgress({ current: 0, total: selectedEmails.length })
+
+                const generateReplies = async () => {
+                  const results = new Map<string, GeneratedReply>()
+
+                  for (let i = 0; i < selectedEmails.length; i++) {
+                    const email = selectedEmails[i]
+                    setBulkGenerationProgress({ current: i + 1, total: selectedEmails.length })
+
+                    try {
+                      const result = await api.generateReply(email.message_id)
+                      if (result.generated) {
+                        results.set(email.message_id, {
+                          messageId: email.message_id,
+                          email,
+                          suggestion: result.suggestion,
+                          editedBody: result.suggestion.body,
+                          status: 'generated',
+                        })
+                      }
+                    } catch (generateError) {
+                      results.set(email.message_id, {
+                        messageId: email.message_id,
+                        email,
+                        suggestion: { subject: '', body: '', tone: '' },
+                        editedBody: '',
+                        status: 'failed',
+                        error: generateError instanceof Error ? generateError.message : 'Failed to generate reply',
+                      })
+                    }
+                  }
+
+                  setGeneratedReplies(results)
+                  setIsGeneratingBulk(false)
+                  setBulkGenerationProgress(null)
+                  setApprovalMode(true)
+
+                  const firstGeneratedId = Array.from(results.keys()).find(
+                    (id) => results.get(id)?.status === 'generated'
+                  )
+                  if (firstGeneratedId) {
+                    setActiveReviewEmailId(firstGeneratedId)
+                  }
+                }
+
+                generateReplies()
+              }}
+              disabled={isGeneratingBulk}
+            >
+              {isGeneratingBulk ? (
+                <>
+                  <Spinner className="size-4" />
+                  <span>
+                    Generating {bulkGenerationProgress?.current} of {bulkGenerationProgress?.total}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <ArrowBendUpLeft className="size-4" />
+                  <span>Generate Replies</span>
+                </>
+              )}
+              </Button>
+            </motion.div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedEmailIds(new Set())}
+            >
+              Clear
+            </Button>
+          </motion.div>
+        )}
 
         <ScrollArea className="flex-1">
           {isLoading ? (
@@ -176,100 +499,175 @@ const Inbox = () => {
               </EmptyHeader>
             </Empty>
           ) : (
-            <div className="flex flex-col gap-1">
-                {filteredEmails.map((email) => (
-                  <div
-                    key={email.message_id}
-                  >
-                    <div
-                      className={`flex flex-col gap-1.5 p-3 border cursor-pointer transition-colors hover:bg-muted/50 ${
-                        selectedEmail?.message_id === email.message_id
-                          ? 'border-primary bg-muted/30'
-                          : 'border-border'
+            <div className="flex flex-col gap-2">
+                {filteredEmails.map((email, index) => {
+                  const isSelected = selectedEmailIds.has(email.message_id)
+                  return (
+                    <motion.div
+                      key={email.message_id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2, delay: index * 0.03 }}
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.99 }}
+                      className={`group flex items-start gap-3 p-3 border transition-all cursor-pointer ${
+                        isSelected
+                          ? 'border-primary bg-primary/5 shadow-sm'
+                          : 'border-border hover:border-muted-foreground/30 hover:bg-muted/30'
                       }`}
-                      onClick={() => handleSelectEmail(email)}
+                      onClick={() => {
+                        setSelectedEmailIds((previous) => {
+                          const updated = new Set(previous)
+                          if (isSelected) {
+                            updated.delete(email.message_id)
+                          } else {
+                            updated.add(email.message_id)
+                          }
+                          return updated
+                        })
+                      }}
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium truncate flex-1">
-                          {email.from_name || email.from_email}
-                        </span>
-                        <Badge variant={CATEGORY_VARIANTS[email.category] ?? 'outline'}>
-                          {CATEGORY_LABELS[email.category] ?? email.category}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">
-                          {email.date ? new Date(email.date).toLocaleDateString() : ''}
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={(checked) => {
+                          setSelectedEmailIds((previous) => {
+                            const updated = new Set(previous)
+                            if (checked) {
+                              updated.add(email.message_id)
+                            } else {
+                              updated.delete(email.message_id)
+                            }
+                            return updated
+                          })
+                        }}
+                        onClick={(event) => event.stopPropagation()}
+                        className="mt-1"
+                      />
+                      <div className="flex-1 flex flex-col gap-2 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <span className="text-xs font-semibold truncate block">
+                              {email.from_name || email.from_email}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <Badge variant={CATEGORY_VARIANTS[email.category] ?? 'outline'} className="text-xs">
+                              {CATEGORY_LABELS[email.category] ?? email.category}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">
+                              {email.date ? new Date(email.date).toLocaleDateString() : ''}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="text-sm font-medium line-clamp-1">{email.subject}</span>
+                        <span className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                          {email.snippet}
                         </span>
                       </div>
-                      <span className="text-xs font-medium">{email.subject}</span>
-                      <span className="text-xs text-muted-foreground line-clamp-2">
-                        {email.snippet}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                    </motion.div>
+                  )
+                })}
             </div>
           )}
         </ScrollArea>
       </div>
 
-      {selectedEmail && (
-        <div
-          className="w-80 shrink-0 flex flex-col gap-3 border-l border-border pl-4"
+{approvalMode && generatedReplies.size > 0 && (
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 20 }}
+          transition={{ duration: 0.3 }}
+          className="w-96 shrink-0 flex flex-col gap-4 border-l border-border pl-4"
         >
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">{selectedEmail.subject}</CardTitle>
-              <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
-                <span>From: {selectedEmail.from_name || selectedEmail.from_email}</span>
-                <span>{selectedEmail.from_email}</span>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-xs whitespace-pre-wrap">{selectedEmail.body_preview || selectedEmail.snippet}</p>
-            </CardContent>
-          </Card>
-
-          <Separator />
-
-          <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-sm font-semibold">Review Replies</span>
+              <span className="text-xs text-muted-foreground">
+                {Array.from(generatedReplies.values()).filter(r => r.status === 'sent').length} of {generatedReplies.size} sent
+              </span>
+            </div>
             <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => handleGenerateReply(selectedEmail)}
-              disabled={isGeneratingReply}
+              variant="ghost"
+              size="xs"
+              onClick={() => {
+                setApprovalMode(false)
+                setActiveReviewEmailId(null)
+              }}
             >
-              {isGeneratingReply ? (
-                <CircleNotch className="animate-spin" />
-              ) : (
-                <ArrowBendUpLeft />
-              )}
-              {isGeneratingReply ? 'Generating...' : 'AI Reply'}
+              Exit
             </Button>
-
-            {replySuggestion && (
-              <div
-                className="flex flex-col gap-2"
-              >
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary">{replySuggestion.tone}</Badge>
-                </div>
-                <Textarea
-                  value={replyBody}
-                  onChange={(event) => setReplyBody(event.target.value)}
-                  className="min-h-24"
-                />
-                <Button
-                  size="sm"
-                  onClick={handleSendReply}
-                  disabled={isSending || !replyBody.trim()}
-                >
-                  {isSending ? <CircleNotch className="animate-spin" /> : 'Send Reply'}
-                </Button>
-              </div>
-            )}
           </div>
-        </div>
+
+          <ScrollArea className="flex-1 -mr-4 pr-4">
+            <div className="flex flex-col gap-2">
+              {Array.from(generatedReplies.entries()).map(([messageId, reply], index) => {
+                const isActive = activeReviewEmailId === messageId
+                const isSent = reply.status === 'sent'
+                const isFailed = reply.status === 'failed'
+
+                return (
+                  <motion.div
+                    key={messageId}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.2, delay: index * 0.05 }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Card
+                      className={`cursor-pointer transition-all ${
+                        isActive
+                          ? 'border-primary shadow-md'
+                          : isSent
+                          ? 'bg-muted/30 border-muted'
+                          : 'hover:border-muted-foreground/50'
+                      }`}
+                      onClick={() => setActiveReviewEmailId(messageId)}
+                    >
+                      <CardContent className="p-3 flex items-start gap-2">
+                        <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+                          <div className="flex items-start gap-2">
+                            <EnvelopeSimple className={`size-3.5 shrink-0 mt-0.5 ${isSent ? 'text-muted-foreground' : 'text-foreground'}`} />
+                            <span className={`text-xs font-medium line-clamp-2 flex-1 ${isSent ? 'text-muted-foreground line-through' : ''}`}>
+                              {reply.email.subject}
+                            </span>
+                          </div>
+                          <span className="text-xs text-muted-foreground truncate pl-5">
+                            {reply.email.from_email}
+                          </span>
+                        </div>
+                        <Badge
+                          variant={
+                            isSent
+                              ? 'default'
+                              : isFailed
+                              ? 'destructive'
+                              : 'secondary'
+                          }
+                          className="shrink-0"
+                        >
+                          {reply.status}
+                        </Badge>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                )
+              })}
+            </div>
+          </ScrollArea>
+
+          {activeReviewEmailId && generatedReplies.get(activeReviewEmailId) && (
+            <div className="border-t border-border pt-4">
+              <ReplyReviewPanel
+                reply={generatedReplies.get(activeReviewEmailId)!}
+                onEdit={(newBody) => handleEditReply(activeReviewEmailId, newBody)}
+                onSend={() => handleSendReply(activeReviewEmailId)}
+                onSkip={() => handleSkipReply(activeReviewEmailId)}
+              />
+            </div>
+          )}
+        </motion.div>
       )}
     </div>
   )
