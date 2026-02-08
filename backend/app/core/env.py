@@ -18,6 +18,23 @@ def _split_csv(value: str | None) -> list[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
+def _get_bool(key: str, default: bool) -> bool:
+    value = os.getenv(key)
+    if value is None:
+        return default
+    return value.lower() in ("true", "1", "yes", "on")
+
+
+def _get_int(key: str, default: int) -> int:
+    value = os.getenv(key)
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except ValueError:
+        return default
+
+
 @dataclass(frozen=True)
 class Settings:
     env: str
@@ -57,6 +74,20 @@ class Settings:
     # OpenClaw bridge (localhost API key auth)
     openclaw_api_key: str = field(default="")
     openclaw_user_email: str = field(default="")
+
+    # Story verification
+    story_verification_enabled: bool = field(default=True)
+
+    # Stripe
+    stripe_secret_key: str = field(default="")
+    stripe_webhook_secret: str = field(default="")
+    stripe_price_id: str = field(default="")
+
+    # Story/dossier performance caps
+    max_entity_evidence_items: int = field(default=250)
+    max_thread_summaries: int = field(default=10)
+    max_meeting_summaries: int = field(default=10)
+    llm_parallelism: int = field(default=3)
 
 
 _CACHED_SETTINGS: Settings | None = None
