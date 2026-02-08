@@ -252,6 +252,113 @@ def extract_todos(emails: list[dict]) -> dict:
         return {"todos": []}
 
 
+# ---------------------------------------------------------------------------
+# Daily report generation
+# ---------------------------------------------------------------------------
+
+DAILY_REPORT_SYSTEM_PROMPT = """You are a daily email report assistant. Given categorized emails and a list of todo items, generate a comprehensive end-of-day summary.
+
+Output JSON:
+{
+  "summary": "2-3 sentence overview of the day's email activity",
+  "email_stats": {
+    "total": 0,
+    "needs_reply": 0,
+    "urgent": 0,
+    "meeting_related": 0,
+    "newsletter": 0,
+    "subscription": 0,
+    "informational": 0
+  },
+  "highlights": [
+    {
+      "subject": "email subject",
+      "from": "sender",
+      "gist": "1 sentence summary",
+      "priority": "high|medium|low"
+    }
+  ],
+  "action_items": {
+    "completed": 0,
+    "pending": 0,
+    "items": [
+      {
+        "text": "action item description",
+        "status": "completed|pending",
+        "source": "where this came from"
+      }
+    ]
+  },
+  "upcoming": [
+    {
+      "text": "deadline or upcoming event",
+      "date": "YYYY-MM-DD or null",
+      "source": "from which email"
+    }
+  ],
+  "wrap_up": "1-2 sentence motivational or practical closing thought"
+}
+
+Rules:
+- Focus on the most important and actionable items
+- Highlights should be limited to the top 8 most notable emails
+- Action items should combine email-derived tasks and existing todos
+- Upcoming should capture any deadlines or events mentioned in emails
+- Be concise but informative"""
+
+
+def generate_daily_report(categorized_emails: list[dict], todos: list[dict]) -> dict:
+    """Generate a daily report from categorized emails and todos."""
+    if not categorized_emails and not todos:
+        return {
+            "summary": "No emails or tasks to report on today.",
+            "email_stats": {"total": 0, "needs_reply": 0, "urgent": 0, "meeting_related": 0, "newsletter": 0, "subscription": 0, "informational": 0},
+            "highlights": [],
+            "action_items": {"completed": 0, "pending": 0, "items": []},
+            "upcoming": [],
+            "wrap_up": "Nothing on the radar today. Enjoy the quiet!",
+        }
+
+    email_summaries = []
+    for email_item in categorized_emails[:50]:
+        email_summaries.append({
+            "subject": email_item.get("subject", ""),
+            "from": email_item.get("from_name") or email_item.get("from_email", ""),
+            "snippet": email_item.get("snippet", "")[:300],
+            "date": email_item.get("date", ""),
+            "category": email_item.get("category", "informational"),
+            "priority": email_item.get("priority", 5),
+        })
+
+    todo_summaries = []
+    for todo_item in todos[:30]:
+        todo_summaries.append({
+            "text": todo_item.get("text", ""),
+            "completed": todo_item.get("completed", False),
+            "source": todo_item.get("source", ""),
+            "priority": todo_item.get("priority", 3),
+        })
+
+    user_prompt = (
+        f"Generate a daily report.\n\n"
+        f"Categorized emails ({len(email_summaries)}):\n{json.dumps(email_summaries, indent=2)}\n\n"
+        f"Current todos ({len(todo_summaries)}):\n{json.dumps(todo_summaries, indent=2)}"
+    )
+
+    try:
+        return call_llm_json(DAILY_REPORT_SYSTEM_PROMPT, user_prompt, max_tokens=3000)
+    except Exception:
+        logger.exception("Daily report generation failed")
+        return {
+            "summary": "Failed to generate daily report.",
+            "email_stats": {"total": 0, "needs_reply": 0, "urgent": 0, "meeting_related": 0, "newsletter": 0, "subscription": 0, "informational": 0},
+            "highlights": [],
+            "action_items": {"completed": 0, "pending": 0, "items": []},
+            "upcoming": [],
+            "wrap_up": "",
+        }
+
+
 def detect_subscriptions(emails: list[dict]) -> list[dict]:
     """Detect subscriptions and billing from emails."""
     if not emails:

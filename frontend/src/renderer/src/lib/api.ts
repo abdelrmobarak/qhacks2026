@@ -76,12 +76,25 @@ export interface Subscription {
   source_subject: string | null
 }
 
+export interface AgentStep {
+  label: string
+  detail?: string
+}
+
+export interface AgentSource {
+  title: string
+  description: string
+  href: string
+}
+
 export interface AgentResponse {
   action: string
   result: Record<string, unknown>
   message: string
   transcript?: string
   routing_confidence?: number
+  steps?: AgentStep[]
+  sources?: AgentSource[]
 }
 
 export interface CalendarEventResponse {
@@ -97,6 +110,48 @@ export interface TodoResponse {
   link: string | null
   priority: number
   completed: boolean
+}
+
+export interface ReportHighlight {
+  subject: string
+  from: string
+  gist: string
+  priority: 'high' | 'medium' | 'low'
+}
+
+export interface ReportActionItem {
+  text: string
+  status: 'completed' | 'pending'
+  source: string
+}
+
+export interface ReportUpcoming {
+  text: string
+  date: string | null
+  source: string
+}
+
+export interface ReportEmailStats {
+  total: number
+  needs_reply: number
+  urgent: number
+  meeting_related: number
+  newsletter: number
+  subscription: number
+  informational: number
+}
+
+export interface DailyReport {
+  summary: string
+  email_stats: ReportEmailStats
+  highlights: ReportHighlight[]
+  action_items: {
+    completed: number
+    pending: number
+    items: ReportActionItem[]
+  }
+  upcoming: ReportUpcoming[]
+  wrap_up: string
 }
 
 export const api = {
@@ -200,5 +255,9 @@ export const api = {
 
   deleteAccount: async (): Promise<{ deleted: boolean }> => {
     return fetchAPI<{ deleted: boolean }>('/v1/me', { method: 'DELETE' })
+  },
+
+  getDailyReport: async (): Promise<DailyReport> => {
+    return fetchAPI<DailyReport>('/reports/daily')
   }
 }

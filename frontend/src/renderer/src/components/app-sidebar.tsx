@@ -5,6 +5,7 @@ import {
   CheckSquare,
   CalendarBlank,
   Robot,
+  Notebook,
   House,
   SignOut,
   Gear,
@@ -55,6 +56,7 @@ const mainNavItems: NavItem[] = [
   { label: 'To-Do', path: '/todos', icon: <CheckSquare weight="duotone" /> },
   { label: 'Calendar', path: '/calendar', icon: <CalendarBlank weight="duotone" /> },
   { label: 'Deep Research', path: '/agent', icon: <Robot weight="duotone" /> },
+  { label: 'Daily Report', path: '/reports', icon: <Notebook weight="duotone" /> },
 ]
 
 const getInitials = (name: string): string => {

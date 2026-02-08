@@ -46,6 +46,88 @@ class CommandRequest(BaseModel):
     command: str
 
 
+def _build_steps(
+    action: str,
+    params: dict,
+    routing: dict,
+    result: dict,
+) -> list[dict]:
+    """Build chain-of-thought steps for the frontend."""
+    steps: list[dict] = [
+        {"label": f"Routing command → {action}"},
+    ]
+
+    if action == "search_emails":
+        indexed = result.get("indexed_count", 0)
+        if indexed:
+            steps.append({"label": f"Indexed {indexed} new emails"})
+        query = params.get("query", "")
+        steps.append({"label": f"Searching for '{query}'"})
+        email_count = len(result.get("emails", []))
+        steps.append({"label": f"Found {email_count} matching emails"})
+
+    elif action in ("summarize_emails", "create_tldr"):
+        steps.append({"label": "Fetching recent emails"})
+        highlight_count = len(result.get("highlights", []))
+        steps.append({"label": f"Generated digest with {highlight_count} highlights"})
+
+    elif action in ("suggest_replies", "fetch_recent"):
+        steps.append({"label": "Fetching recent emails"})
+        email_count = len(result.get("emails", []))
+        steps.append({"label": f"Categorized {email_count} emails"})
+
+    elif action == "track_subscriptions":
+        steps.append({"label": "Scanning billing emails"})
+        sub_count = len(result.get("subscriptions", []))
+        steps.append({"label": f"Detected {sub_count} subscriptions"})
+
+    elif action == "generate_todos":
+        steps.append({"label": "Analyzing emails for tasks"})
+        todo_count = len(result.get("todos", []))
+        steps.append({"label": f"Extracted {todo_count} tasks"})
+
+    elif action == "add_to_calendar":
+        summary = params.get("summary", "New Event")
+        steps.append({"label": f"Creating event: {summary}"})
+
+    return steps
+
+
+def _build_sources(action: str, result: dict) -> list[dict]:
+    """Build source references for the frontend."""
+    sources: list[dict] = []
+
+    if action == "search_emails":
+        for email in result.get("emails", []):
+            message_id = email.get("message_id", "")
+            sources.append({
+                "title": email.get("subject", "(no subject)"),
+                "description": email.get("snippet", ""),
+                "href": f"https://mail.google.com/mail/u/0/#inbox/{message_id}",
+            })
+
+    elif action in ("summarize_emails", "create_tldr"):
+        for highlight in result.get("highlights", []):
+            sender = highlight.get("from", "Unknown")
+            sources.append({
+                "title": f"From {sender}",
+                "description": highlight.get("gist", ""),
+                "href": "https://mail.google.com/mail/u/0/#inbox",
+            })
+
+    elif action == "generate_todos":
+        for todo in result.get("todos", []):
+            link = todo.get("link", "")
+            if link:
+                sources.append({
+                    "title": todo.get("source", "Email"),
+                    "description": todo.get("text", ""),
+                    "href": link,
+                })
+
+    return sources
+
+
 async def _execute_action(
     action: str,
     params: dict,
@@ -183,6 +265,8 @@ async def agent_command(
         "result": result,
         "message": message,
         "routing_confidence": routing.get("confidence", 0),
+        "steps": _build_steps(action, params, routing, result),
+        "sources": _build_sources(action, result),
     }
 
 
@@ -223,4 +307,6 @@ async def agent_voice(
         "result": result,
         "message": message,
         "routing_confidence": routing.get("confidence", 0),
+        "steps": _build_steps(action, params, routing, result),
+        "sources": _build_sources(action, result),
     }

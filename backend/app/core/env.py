@@ -53,6 +53,10 @@ class Settings:
     # Session settings
     session_max_age_seconds: int = field(default=60 * 60 * 24 * 7)  # 7 days
 
+    # OpenClaw bridge (localhost API key auth)
+    openclaw_api_key: str = field(default="")
+    openclaw_user_email: str = field(default="")
+
 
 _CACHED_SETTINGS: Settings | None = None
 _ENV_LOADED = False
@@ -149,6 +153,8 @@ def load_settings() -> Settings:
         openai_api_key=os.getenv("OPENAI_API_KEY", ""),
         openrouter_api_key=os.getenv("OPENROUTER_API_KEY", ""),
         gradium_api_key=os.getenv("GRADIUM_API_KEY", ""),
+        openclaw_api_key=os.getenv("OPENCLAW_API_KEY", ""),
+        openclaw_user_email=os.getenv("OPENCLAW_USER_EMAIL", ""),
     )
 
     _CACHED_SETTINGS = settings
