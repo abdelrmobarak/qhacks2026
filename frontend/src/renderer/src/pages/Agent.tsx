@@ -305,7 +305,7 @@ const Agent = () => {
                 return (
                   <div key={turn.id} className="flex justify-end">
                     <div className="max-w-md rounded-2xl px-3.5 py-2.5 bg-primary text-primary-foreground">
-                      <p className="text-sm whitespace-pre-wrap leading-relaxed">{turn.content}</p>
+                      <p className="text-xs whitespace-pre-wrap leading-relaxed">{turn.content}</p>
                     </div>
                   </div>
                 )
