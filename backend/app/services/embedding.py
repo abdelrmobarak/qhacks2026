@@ -1,4 +1,4 @@
-"""Email embedding and semantic search via pgvector + OpenAI embeddings."""
+"""Email embedding and semantic search via pgvector + OpenRouter embeddings."""
 
 from __future__ import annotations
 
@@ -18,27 +18,36 @@ from app.services.gmail import fetch_messages, list_messages
 settings = load_settings()
 logger = logging.getLogger(__name__)
 
-EMBEDDING_MODEL = "text-embedding-3-small"
 EMBEDDING_DIMENSIONS = 1536
 BATCH_SIZE = 100
 MAX_EMAILS_TO_INDEX = 500
 SEARCH_TOP_K = 10
 
 
+def _get_embedding_config() -> tuple[str, str, str]:
+    """Return (base_url, api_key, model) for the embedding provider."""
+    if not settings.openrouter_api_key:
+        raise ValueError("OPENROUTER_API_KEY not configured")
+    return (
+        "https://openrouter.ai/api/v1/embeddings",
+        settings.openrouter_api_key,
+        "openai/text-embedding-3-small",
+    )
+
+
 def generate_embedding(text_input: str) -> list[float]:
-    """Generate a single embedding vector via OpenAI."""
-    if not settings.openai_api_key:
-        raise ValueError("OPENAI_API_KEY not configured")
+    """Generate a single embedding vector."""
+    base_url, api_key, model = _get_embedding_config()
 
     with httpx.Client(timeout=30) as client:
         response = client.post(
-            "https://api.openai.com/v1/embeddings",
+            base_url,
             headers={
-                "Authorization": f"Bearer {settings.openai_api_key}",
+                "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
             },
             json={
-                "model": EMBEDDING_MODEL,
+                "model": model,
                 "input": text_input,
             },
         )
@@ -48,8 +57,7 @@ def generate_embedding(text_input: str) -> list[float]:
 
 def generate_embeddings_batch(texts: list[str]) -> list[list[float]]:
     """Generate embeddings for a batch of texts in a single API call."""
-    if not settings.openai_api_key:
-        raise ValueError("OPENAI_API_KEY not configured")
+    base_url, api_key, model = _get_embedding_config()
 
     if not texts:
         return []
@@ -60,13 +68,13 @@ def generate_embeddings_batch(texts: list[str]) -> list[list[float]]:
         for offset in range(0, len(texts), BATCH_SIZE):
             batch = texts[offset : offset + BATCH_SIZE]
             response = client.post(
-                "https://api.openai.com/v1/embeddings",
+                base_url,
                 headers={
-                    "Authorization": f"Bearer {settings.openai_api_key}",
+                    "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json",
                 },
                 json={
-                    "model": EMBEDDING_MODEL,
+                    "model": model,
                     "input": batch,
                 },
             )

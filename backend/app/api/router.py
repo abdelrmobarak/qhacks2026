@@ -8,6 +8,7 @@ from app.api.routes import (
     calendar_routes,
     emails,
     health,
+    network,
     openclaw,
     privacy,
     reports,
@@ -29,4 +30,5 @@ api_router.include_router(
 api_router.include_router(agent.router, prefix="/agent", tags=["agent"])
 api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
 api_router.include_router(todos.router, prefix="/todos", tags=["todos"])
+api_router.include_router(network.router, prefix="/network", tags=["network"])
 api_router.include_router(openclaw.router, prefix="/openclaw", tags=["openclaw"])

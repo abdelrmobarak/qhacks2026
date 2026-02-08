@@ -6,6 +6,7 @@ import {
   CalendarBlank,
   Robot,
   Notebook,
+  ShareNetwork,
   House,
   SignOut,
   Gear,
@@ -55,6 +56,7 @@ const mainNavItems: NavItem[] = [
   { label: 'Subscriptions', path: '/subscriptions', icon: <CreditCard weight="duotone" /> },
   { label: 'To-Do', path: '/todos', icon: <CheckSquare weight="duotone" /> },
   { label: 'Calendar', path: '/calendar', icon: <CalendarBlank weight="duotone" /> },
+  { label: 'Network', path: '/network', icon: <ShareNetwork weight="duotone" /> },
   { label: 'Deep Research', path: '/agent', icon: <Robot weight="duotone" /> },
   { label: 'Daily Report', path: '/reports', icon: <Notebook weight="duotone" /> },
 ]

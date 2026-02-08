@@ -166,7 +166,7 @@ const PromptInputTextarea = ({
       onChange={handleChange}
       onKeyDown={handleKeyDown}
       className={cn(
-        "text-foreground min-h-[44px] w-full resize-none border-none bg-transparent shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
+        "text-foreground min-h-[44px] w-full resize-none border-none bg-transparent dark:bg-transparent shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
         className
       )}
       rows={1}
@@ -212,6 +212,7 @@ const PromptInputAction = ({
         disabled={disabled}
         onClick={(event: React.MouseEvent) => event.stopPropagation()}
         className="inline-flex"
+        render={<span />}
       >
         {children}
       </TooltipTrigger>

@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.routes.auth import require_current_user
 from app.db import get_db
-from app.db.models import Todo, User
+from app.db.models import DailyReportCache, Todo, User
 from app.services.gmail import fetch_messages, list_messages
 from app.services.token_manager import get_valid_access_token
 from app.services.agents.email_agent import categorize_emails, generate_daily_report
@@ -37,8 +38,17 @@ def _format_gmail_message(msg) -> dict:
 async def get_daily_report(
     db: Annotated[AsyncSession, Depends(get_db)],
     user: Annotated[User, Depends(require_current_user)],
+    regenerate: bool = Query(False),
 ) -> dict:
-    """Generate a daily report from recent emails and todos."""
+    """Return cached daily report, or generate a fresh one."""
+    if not regenerate:
+        cached = await db.execute(
+            select(DailyReportCache).where(DailyReportCache.user_id == user.id)
+        )
+        existing = cached.scalar_one_or_none()
+        if existing:
+            return json.loads(existing.report_json)
+
     access_token = await get_valid_access_token(user, db)
 
     message_refs = await list_messages(
@@ -69,4 +79,17 @@ async def get_daily_report(
     ]
 
     report = await asyncio.to_thread(generate_daily_report, categorized, todos)
+
+    report_json = json.dumps(report)
+    cached = await db.execute(
+        select(DailyReportCache).where(DailyReportCache.user_id == user.id)
+    )
+    existing = cached.scalar_one_or_none()
+    if existing:
+        existing.report_json = report_json
+        existing.cached_at = func.now()
+    else:
+        db.add(DailyReportCache(user_id=user.id, report_json=report_json))
+    await db.commit()
+
     return report

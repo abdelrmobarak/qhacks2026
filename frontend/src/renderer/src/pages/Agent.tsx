@@ -178,7 +178,7 @@ const AssistantMessage = ({ turn }: AssistantMessageProps) => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.25, ease: 'easeOut' }}
             >
-              <div className="rounded-2xl bg-muted px-3.5 py-2.5">
+              <div className="rounded-2xl py-2.5">
                 <Markdown>{turn.content}</Markdown>
               </div>
 
@@ -234,7 +234,7 @@ const Agent = () => {
   }, [conversation])
 
   const addTurn = useCallback((turn: Omit<ConversationTurn, 'id' | 'timestamp'>) => {
-    const turnId = `turn-${Date.now()}`
+    const turnId = crypto.randomUUID()
     setConversation((previous) => [
       ...previous,
       { ...turn, id: turnId, timestamp: new Date() },

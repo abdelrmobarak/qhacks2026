@@ -3,15 +3,17 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.routes.auth import require_current_user
 from app.db import get_db
-from app.db.models import User
+from app.db.models import EmailCategoryCache, User
 from app.services.gmail import (
     fetch_message,
     fetch_messages,
@@ -24,6 +26,8 @@ from app.services.agents.email_agent import (
     create_tldr_digest,
     generate_reply,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -83,8 +87,59 @@ async def get_recent_emails(
     messages = await fetch_messages(access_token, message_ids, include_body=True)
     email_dicts = [_format_gmail_message(m) for m in messages]
 
-    categorized = await asyncio.to_thread(categorize_emails, email_dicts)
-    return {"emails": categorized}
+    cached_rows = (
+        await db.execute(
+            select(EmailCategoryCache).where(
+                EmailCategoryCache.user_id == user.id,
+                EmailCategoryCache.gmail_message_id.in_(message_ids),
+            )
+        )
+    ).scalars().all()
+
+    cached_by_id: dict[str, EmailCategoryCache] = {
+        row.gmail_message_id: row for row in cached_rows
+    }
+
+    uncached_emails = [
+        email_dict for email_dict in email_dicts
+        if email_dict["message_id"] not in cached_by_id
+    ]
+
+    fresh_categories: dict[str, dict] = {}
+    if uncached_emails:
+        logger.info("Categorizing %d uncached emails (skipping %d cached)", len(uncached_emails), len(cached_by_id))
+        categorized_new = await asyncio.to_thread(categorize_emails, uncached_emails)
+        for email_item in categorized_new:
+            message_id = email_item.get("message_id", "")
+            fresh_categories[message_id] = email_item
+            db.add(EmailCategoryCache(
+                user_id=user.id,
+                gmail_message_id=message_id,
+                category=email_item.get("category", "informational"),
+                priority=email_item.get("priority", 5),
+                category_reason=email_item.get("category_reason", ""),
+            ))
+        await db.commit()
+    else:
+        logger.info("All %d emails served from cache", len(email_dicts))
+
+    output = []
+    for email_dict in email_dicts:
+        message_id = email_dict["message_id"]
+        if message_id in fresh_categories:
+            output.append(fresh_categories[message_id])
+        elif message_id in cached_by_id:
+            cached_row = cached_by_id[message_id]
+            output.append({
+                **email_dict,
+                "category": cached_row.category,
+                "priority": cached_row.priority,
+                "category_reason": cached_row.category_reason or "",
+            })
+        else:
+            output.append({**email_dict, "category": "informational", "priority": 5, "category_reason": ""})
+
+    return {"emails": output}
 
 
 @router.get("/tldr")
